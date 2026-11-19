@@ -1,0 +1,141 @@
+[2026-11-18 22:10:04] === Sección 6, etapa 'umbrales_oof' (PID 15572) ===
+
+[2026-11-18 22:10:47]    pliegue 1/5 fuera de muestra listo
+
+[2026-11-18 22:11:26]    pliegue 2/5 fuera de muestra listo
+
+[2026-11-18 22:12:01]    pliegue 3/5 fuera de muestra listo
+
+[2026-11-18 22:12:35]    pliegue 4/5 fuera de muestra listo
+
+[2026-11-18 22:13:10]    pliegue 5/5 fuera de muestra listo
+
+[2026-11-18 22:13:13] Umbrales fuera de pliegue (entrenamiento):
+
+                   modelo umbral     VN FP FN    VP      F1
+             logística L2    0.1 101129  8  5 75385 0.99991
+             logística L2    0.3 101136  1 10 75380 0.99993
+             logística L2    0.5 101136  1 12 75378 0.99991
+             logística L2    0.7 101137  0 17 75373 0.99989
+             logística L2    0.9 101137  0 25 75365 0.99983
+         bosque aleatorio    0.1 101069 68  0 75390 0.99955
+         bosque aleatorio    0.3 101137  0  0 75390 1.00000
+         bosque aleatorio    0.5 101137  0  2 75388 0.99999
+         bosque aleatorio    0.7 101137  0 15 75375 0.99990
+         bosque aleatorio    0.9 101137  0 90 75300 0.99940
+ regla de dos condiciones     NA 101137  0 24 75366 0.99984
+
+[2026-11-18 22:13:13] Umbrales elegidos con el entrenamiento (fuera de pliegue):
+
+           modelo                                              criterio  k
+ bosque aleatorio                         mínimo costo k*FN + FP, k = 1  1
+ bosque aleatorio                         mínimo costo k*FN + FP, k = 5  5
+ bosque aleatorio                        mínimo costo k*FN + FP, k = 10 10
+ bosque aleatorio                        mínimo costo k*FN + FP, k = 50 50
+ bosque aleatorio a lo sumo 1 FP por 10,000 legítimas (umbral más bajo) NA
+     logística L2                         mínimo costo k*FN + FP, k = 1  1
+     logística L2                         mínimo costo k*FN + FP, k = 5  5
+     logística L2                        mínimo costo k*FN + FP, k = 10 10
+     logística L2                        mínimo costo k*FN + FP, k = 50 50
+     logística L2 a lo sumo 1 FP por 10,000 legítimas (umbral más bajo) NA
+ umbral costo_por_10000 FP FN FP_por_10000_legitimas
+   0.27         0.00000  0  0                0.00000
+   0.27         0.00000  0  0                0.00000
+   0.27         0.00000  0  0                0.00000
+   0.27         0.00000  0  0                0.00000
+   0.17              NA  9  0                0.88988
+   0.15         0.50984  2  7                0.19775
+   0.11         1.81275  7  5                0.69213
+   0.11         3.22897  7  5                0.69213
+   0.02        10.53663 86  2                8.50332
+   0.10              NA  8  5                0.79101
+
+[2026-11-18 22:13:13] Etapa 'umbrales_oof' terminada en 188 s | ajustes no convergidos en la etapa: 0
+
+[2026-11-18 22:29:30] === Sección 6, etapa 'umbrales_oof' (PID 25468) ===
+
+[2026-11-18 22:30:14]    pliegue 1/5 fuera de muestra listo
+
+[2026-11-18 22:30:54]    pliegue 2/5 fuera de muestra listo
+
+[2026-11-18 22:31:33]    pliegue 3/5 fuera de muestra listo
+
+[2026-11-18 22:32:12]    pliegue 4/5 fuera de muestra listo
+
+[2026-11-18 22:32:51]    pliegue 5/5 fuera de muestra listo
+
+[2026-11-18 22:32:54] Umbrales fuera de pliegue (entrenamiento):
+
+                   modelo umbral     VN FP FN    VP      F1
+             logística L2    0.1 101129  8  5 75385 0.99991
+             logística L2    0.3 101136  1 10 75380 0.99993
+             logística L2    0.5 101136  1 12 75378 0.99991
+             logística L2    0.7 101137  0 17 75373 0.99989
+             logística L2    0.9 101137  0 25 75365 0.99983
+         bosque aleatorio    0.1 101069 68  0 75390 0.99955
+         bosque aleatorio    0.3 101137  0  0 75390 1.00000
+         bosque aleatorio    0.5 101137  0  2 75388 0.99999
+         bosque aleatorio    0.7 101137  0 15 75375 0.99990
+         bosque aleatorio    0.9 101137  0 90 75300 0.99940
+ regla de dos condiciones     NA 101137  0 24 75366 0.99984
+
+[2026-11-18 22:32:54] Umbrales elegidos con el entrenamiento (fuera de pliegue):
+
+           modelo                                              criterio  k
+ bosque aleatorio                         mínimo costo k*FN + FP, k = 1  1
+ bosque aleatorio                         mínimo costo k*FN + FP, k = 5  5
+ bosque aleatorio                        mínimo costo k*FN + FP, k = 10 10
+ bosque aleatorio                        mínimo costo k*FN + FP, k = 50 50
+ bosque aleatorio a lo sumo 1 FP por 10,000 legítimas (umbral más bajo) NA
+     logística L2                         mínimo costo k*FN + FP, k = 1  1
+     logística L2                         mínimo costo k*FN + FP, k = 5  5
+     logística L2                        mínimo costo k*FN + FP, k = 10 10
+     logística L2                        mínimo costo k*FN + FP, k = 50 50
+     logística L2 a lo sumo 1 FP por 10,000 legítimas (umbral más bajo) NA
+ umbral costo_por_10000 FP FN FP_por_10000_legitimas
+   0.27         0.00000  0  0                0.00000
+   0.27         0.00000  0  0                0.00000
+   0.27         0.00000  0  0                0.00000
+   0.27         0.00000  0  0                0.00000
+   0.17              NA  9  0                0.88988
+   0.15         0.50984  2  7                0.19775
+   0.11         1.81275  7  5                0.69213
+   0.11         3.22897  7  5                0.69213
+   0.02        10.53663 86  2                8.50332
+   0.10              NA  8  5                0.79101
+                            rango_costo_minimo
+ 0.27 a 0.45 (19 de 99 umbrales de la rejilla)
+ 0.27 a 0.45 (19 de 99 umbrales de la rejilla)
+ 0.27 a 0.45 (19 de 99 umbrales de la rejilla)
+ 0.27 a 0.45 (19 de 99 umbrales de la rejilla)
+                                          <NA>
+                                          0.15
+  0.11 a 0.12 (2 de 99 umbrales de la rejilla)
+  0.11 a 0.12 (2 de 99 umbrales de la rejilla)
+                                          0.02
+                                          <NA>
+                                    rango_costo_casi_minimo casi_minimo_inf
+              0.24 a 0.49 (26 de 99 umbrales de la rejilla)            0.24
+              0.19 a 0.49 (31 de 99 umbrales de la rejilla)            0.19
+              0.17 a 0.49 (33 de 99 umbrales de la rejilla)            0.17
+              0.12 a 0.49 (38 de 99 umbrales de la rejilla)            0.12
+              0.17 a 0.99 (83 de 99 umbrales de la rejilla)            0.17
+               0.14 a 0.16 (3 de 99 umbrales de la rejilla)            0.14
+ 0.09 a 0.15 (6 de 99 umbrales de la rejilla; no contiguos)            0.09
+               0.08 a 0.13 (6 de 99 umbrales de la rejilla)            0.08
+               0.02 a 0.05 (4 de 99 umbrales de la rejilla)            0.02
+              0.10 a 0.99 (90 de 99 umbrales de la rejilla)            0.10
+ casi_minimo_sup
+            0.49
+            0.49
+            0.49
+            0.49
+            0.99
+            0.16
+            0.15
+            0.13
+            0.05
+            0.99
+
+[2026-11-18 22:32:54] Etapa 'umbrales_oof' terminada en 204 s | ajustes no convergidos en la etapa: 0
+

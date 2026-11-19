@@ -1,0 +1,13 @@
+﻿"conjunto","n_quitadas","phishing_entre_quitadas","max_abs_delta_beta","variable_max_delta","max_abs_delta_beta_en_DE_bootstrap","cambios_de_signo","max_abs_delta_p_entrenamiento","max_abs_delta_p_prueba","cambios_clasificacion_prueba","reajuste_converge"
+"residuo de Pearson |r| > 3",2,2,4.694977546796899,"LargestLineLength",2.016734548599712,4,0.29316657322105266,0.999989057261919,"0.10:5; 0.30:2; 0.50:3; 0.70:3; 0.90:2",TRUE
+"10 mayores distancias de Cook (aprox.)",10,9,4.7960739926758045,"LargestLineLength",3.058674540748377,6,0.7012184143503791,0.807383311346996,"0.10:4; 0.30:2; 0.50:3; 0.70:3; 0.90:2",TRUE
+"control: 10 observaciones al azar (repetición 1)",10,4,6.36331971559656e-7,"NoOfExternalRef",8.627890448137184e-5,0,2.254591102701653e-8,7.05353812024967e-8,"0.10:0; 0.30:0; 0.50:0; 0.70:0; 0.90:0",TRUE
+"control: 10 observaciones al azar (repetición 2)",10,5,1.3226438091873405e-4,"NoOfSelfRef",8.870093161541308e-4,0,3.044335403229459e-5,2.8923065145292082e-5,"0.10:0; 0.30:0; 0.50:0; 0.70:0; 0.90:0",TRUE
+"control: 10 observaciones al azar (repetición 3)",10,5,4.1061502908945613e-7,"NoOfSelfRef",2.9242887535051765e-5,0,2.165071455451084e-8,4.5181505647917675e-8,"0.10:0; 0.30:0; 0.50:0; 0.70:0; 0.90:0",TRUE
+"control: 10 observaciones al azar (repetición 4)",10,6,8.077280342710935e-5,"URLSimilarityIndex",3.950877977947479e-4,0,1.2716713595484208e-5,1.605854701983156e-5,"0.10:0; 0.30:0; 0.50:0; 0.70:0; 0.90:0",TRUE
+"control: 10 observaciones al azar (repetición 5)",10,5,5.631748922851898e-5,"NoOfImage",9.397948104565309e-5,0,5.810288177976464e-6,9.826135621171517e-6,"0.10:0; 0.30:0; 0.50:0; 0.70:0; 0.90:0",TRUE
+"control: 10 observaciones al azar (repetición 6)",10,4,1.9409174134565887e-7,"NoOfExternalRef",1.519573985735935e-5,0,1.152232487200422e-8,2.6716745260557673e-8,"0.10:0; 0.30:0; 0.50:0; 0.70:0; 0.90:0",TRUE
+"control: 10 observaciones al azar (repetición 7)",10,4,4.191100027028938e-7,"LineOfCode",2.88207068362207e-5,0,1.8900196407933834e-8,5.552488524518395e-8,"0.10:0; 0.30:0; 0.50:0; 0.70:0; 0.90:0",TRUE
+"control: 10 observaciones al azar (repetición 8)",10,4,9.106862486341072e-7,"LineOfCode",2.141067110911238e-4,0,5.4231689139427885e-8,2.4911541862682185e-7,"0.10:0; 0.30:0; 0.50:0; 0.70:0; 0.90:0",TRUE
+"control: 10 observaciones al azar (repetición 9)",10,5,8.0450134936072e-6,"HasSocialNet",3.059405472882777e-5,0,5.641171612058571e-7,1.6248706677934877e-6,"0.10:0; 0.30:0; 0.50:0; 0.70:0; 0.90:0",TRUE
+"control: 10 observaciones al azar (repetición 10)",10,5,1.1972831719919697e-4,"HasSocialNet",4.5261187635589926e-4,0,8.7504648965675e-6,3.5638763333123435e-5,"0.10:0; 0.30:0; 0.50:0; 0.70:0; 0.90:0",TRUE

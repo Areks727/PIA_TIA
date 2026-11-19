@@ -1,0 +1,16 @@
+Warning message:
+package 'readr' was built under R version 4.6.2 
+Warning messages:
+1: package 'glmnet' was built under R version 4.6.2 
+2: package 'ranger' was built under R version 4.6.2 
+3: package 'pROC' was built under R version 4.6.2 
+[2026-11-18 22:55:17] === Sección 6, etapa 'sens_sin_tld' (PID 6520) ===
+
+[2026-11-18 22:55:21] Escenario: sin TLDLegitimateProb (cálculo no documentado por UCI) (47 predictores; entrenamiento = 176527; prueba = 58843, phishing = 25130)
+
+[2026-11-18 22:55:32]    logística: AUC=1.00000 FP/FN a 0.5 = 0/2 converge=TRUE (9.5 s)
+
+[2026-11-18 22:56:08]    bosque: AUC=1.00000 FP/FN a 0.5 = 0/0
+
+[2026-11-18 22:56:08] Etapa 'sens_sin_tld' terminada en 51 s | ajustes no convergidos en la etapa: 0
+

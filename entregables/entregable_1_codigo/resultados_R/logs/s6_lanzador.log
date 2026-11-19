@@ -1,0 +1,126 @@
+[2026-11-18 21:40:43] Lanzador de la sección 6 (PID 7912): preparar, cv_logistica
+
+[2026-11-18 21:40:43] -> etapa 'preparar' lanzada (PID 20108, límite 10 min, salida en ./resultados_R/logs/s6_preparar.salida.txt)
+
+[2026-11-18 21:40:51] <- etapa 'preparar': ok en 8 s
+
+[2026-11-18 21:40:51] -> etapa 'cv_logistica' lanzada (PID 18756, límite 30 min, salida en ./resultados_R/logs/s6_cv_logistica.salida.txt)
+
+[2026-11-18 21:43:22] <- etapa 'cv_logistica': ok en 150 s
+
+[2026-11-18 21:43:22] Resumen: preparar=ok | cv_logistica=ok
+
+[2026-11-18 22:07:58] Lanzador de la sección 6 (PID 8344): separacion, cv_bosque, umbrales_oof, ajuste_final, bootstrap_prueba
+
+[2026-11-18 22:07:59] -> etapa 'separacion' lanzada (PID 24156, límite 20 min, salida en ./resultados_R/logs/s6_separacion.salida.txt)
+
+[2026-11-18 22:09:43] <- etapa 'separacion': ok en 104 s
+
+[2026-11-18 22:09:43] -> etapa 'cv_bosque' lanzada (PID 14660, límite 30 min, salida en ./resultados_R/logs/s6_cv_bosque.salida.txt)
+
+[2026-11-18 22:10:02] <- etapa 'cv_bosque': ok en 20 s
+
+[2026-11-18 22:10:03] -> etapa 'umbrales_oof' lanzada (PID 15572, límite 30 min, salida en ./resultados_R/logs/s6_umbrales_oof.salida.txt)
+
+[2026-11-18 22:13:13] <- etapa 'umbrales_oof': ok en 191 s
+
+[2026-11-18 22:13:13] -> etapa 'ajuste_final' lanzada (PID 19940, límite 20 min, salida en ./resultados_R/logs/s6_ajuste_final.salida.txt)
+
+[2026-11-18 22:14:29] <- etapa 'ajuste_final': ok en 76 s
+
+[2026-11-18 22:14:29] -> etapa 'bootstrap_prueba' lanzada (PID 21976, límite 10 min, salida en ./resultados_R/logs/s6_bootstrap_prueba.salida.txt)
+
+[2026-11-18 22:17:33] <- etapa 'bootstrap_prueba': ok en 184 s
+
+[2026-11-18 22:17:33] Resumen: separacion=ok | cv_bosque=ok | umbrales_oof=ok | ajuste_final=ok | bootstrap_prueba=ok
+
+[2026-11-18 22:29:28] Lanzador de la sección 6 (PID 10960): umbrales_oof, influencia, sens_sin_similitud, sens_lexicas, sens_html, sens_url_recalculadas, sens_dominio, sens_razones_nchar, sens_sin_tld, sens_formato_bosque, sens_formato_logistica
+
+[2026-11-18 22:29:28] -> etapa 'umbrales_oof' lanzada (PID 25468, límite 30 min, salida en ./resultados_R/logs/s6_umbrales_oof.salida.txt)
+
+[2026-11-18 22:32:54] <- etapa 'umbrales_oof': ok en 206 s
+
+[2026-11-18 22:32:54] -> etapa 'influencia' lanzada (PID 2152, límite 60 min, salida en ./resultados_R/logs/s6_influencia.salida.txt)
+
+[2026-11-18 22:48:51] <- etapa 'influencia': ok en 957 s
+
+[2026-11-18 22:48:51] -> etapa 'sens_sin_similitud' lanzada (PID 22324, límite 15 min, salida en ./resultados_R/logs/s6_sens_sin_similitud.salida.txt)
+
+[2026-11-18 22:50:15] <- etapa 'sens_sin_similitud': ok en 84 s
+
+[2026-11-18 22:50:15] -> etapa 'sens_lexicas' lanzada (PID 1328, límite 15 min, salida en ./resultados_R/logs/s6_sens_lexicas.salida.txt)
+
+[2026-11-18 22:51:27] <- etapa 'sens_lexicas': ok en 71 s
+
+[2026-11-18 22:51:27] -> etapa 'sens_html' lanzada (PID 4036, límite 15 min, salida en ./resultados_R/logs/s6_sens_html.salida.txt)
+
+[2026-11-18 22:52:44] <- etapa 'sens_html': ok en 77 s
+
+[2026-11-18 22:52:44] -> etapa 'sens_url_recalculadas' lanzada (PID 7936, límite 15 min, salida en ./resultados_R/logs/s6_sens_url_recalculadas.salida.txt)
+
+[2026-11-18 22:53:23] <- etapa 'sens_url_recalculadas': ok en 39 s
+
+[2026-11-18 22:53:24] -> etapa 'sens_dominio' lanzada (PID 4864, límite 15 min, salida en ./resultados_R/logs/s6_sens_dominio.salida.txt)
+
+[2026-11-18 22:54:21] <- etapa 'sens_dominio': ok en 58 s
+
+[2026-11-18 22:54:22] -> etapa 'sens_razones_nchar' lanzada (PID 24204, límite 15 min, salida en ./resultados_R/logs/s6_sens_razones_nchar.salida.txt)
+
+[2026-11-18 22:55:16] <- etapa 'sens_razones_nchar': ok en 54 s
+
+[2026-11-18 22:55:16] -> etapa 'sens_sin_tld' lanzada (PID 6520, límite 15 min, salida en ./resultados_R/logs/s6_sens_sin_tld.salida.txt)
+
+[2026-11-18 22:56:08] <- etapa 'sens_sin_tld': ok en 53 s
+
+[2026-11-18 22:56:08] -> etapa 'sens_formato_bosque' lanzada (PID 9032, límite 15 min, salida en ./resultados_R/logs/s6_sens_formato_bosque.salida.txt)
+
+[2026-11-18 22:56:33] <- etapa 'sens_formato_bosque': ok en 24 s
+
+[2026-11-18 22:56:33] -> etapa 'sens_formato_logistica' lanzada (PID 19568, límite 5 min, salida en ./resultados_R/logs/s6_sens_formato_logistica.salida.txt)
+
+[2026-11-18 23:01:38] <- etapa 'sens_formato_logistica': tiempo agotado en 305 s
+
+[2026-11-18 23:01:38]    últimas líneas de la salida:
+
+   |      NoOfQMarkInURL                        3               0.999715
+   |  NoOfAmpersandInURL                        6               0.999941
+   |             IsHTTPS                        1               1.000000
+   |  filas_distintas_del_modal                                       motivo
+   |                          0                                    constante
+   |                          2 casi constante (> 99.9 % con el mismo valor)
+   |                          2 casi constante (> 99.9 % con el mismo valor)
+   |                          2 casi constante (> 99.9 % con el mismo valor)
+   |                         30 casi constante (> 99.9 % con el mismo valor)
+   |                         29 casi constante (> 99.9 % con el mismo valor)
+   |                          6 casi constante (> 99.9 % con el mismo valor)
+   |                          0                                    constante
+   | 
+   | [2026-11-18 22:56:45] Escenario: subconjunto con formato comparable a legítimas (40 predictores; entrenamiento = 101866; prueba = 33956, phishing = 243)
+   | 
+
+[2026-11-18 23:01:38] Resumen: umbrales_oof=ok | influencia=ok | sens_sin_similitud=ok | sens_lexicas=ok | sens_html=ok | sens_url_recalculadas=ok | sens_dominio=ok | sens_razones_nchar=ok | sens_sin_tld=ok | sens_formato_bosque=ok | sens_formato_logistica=tiempo agotado
+
+[2026-11-18 23:02:06] Lanzador de la sección 6 (PID 14308): bootstrap_prueba
+
+[2026-11-18 23:02:07] -> etapa 'bootstrap_prueba' lanzada (PID 5808, límite 15 min, salida en ./resultados_R/logs/s6_bootstrap_prueba.salida.txt)
+
+[2026-11-18 23:05:20] <- etapa 'bootstrap_prueba': ok en 193 s
+
+[2026-11-18 23:05:20] Resumen: bootstrap_prueba=ok
+
+[2026-11-18 23:05:32] Lanzador de la sección 6 (PID 3392): bootstrap, consolidar
+
+[2026-11-18 23:05:32] -> etapa 'bootstrap' lanzada (PID 2860, límite 120 min, salida en ./resultados_R/logs/s6_bootstrap.salida.txt)
+
+[2026-11-18 23:52:46] Lanzador de la sección 6 (PID 15472): bootstrap, consolidar
+
+[2026-11-18 23:52:47] -> etapa 'bootstrap' lanzada (PID 20488, límite 120 min, salida en ./resultados_R/logs/s6_bootstrap.salida.txt)
+
+[2026-11-18 23:53:22] <- etapa 'bootstrap': ok en 35 s
+
+[2026-11-18 23:53:22] -> etapa 'consolidar' lanzada (PID 23584, límite 10 min, salida en ./resultados_R/logs/s6_consolidar.salida.txt)
+
+[2026-11-18 23:53:24] <- etapa 'consolidar': ok en 2 s
+
+[2026-11-18 23:53:24] Resumen: bootstrap=ok | consolidar=ok
+

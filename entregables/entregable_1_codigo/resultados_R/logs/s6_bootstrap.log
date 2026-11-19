@@ -1,0 +1,73 @@
+[2026-11-18 23:05:34] === Sección 6, etapa 'bootstrap' (PID 2860) ===
+
+[2026-11-18 23:05:37] Bootstrap de coeficientes: B = 200, C = 10
+
+[2026-11-18 23:06:17]    4 procesos en paralelo (PID: 9604, 14172, 2664, 2352)
+
+[2026-11-18 23:16:39]    bootstrap 25/200 (no convergidas hasta ahora: 0; punto de guardado escrito)
+
+[2026-11-18 23:25:42]    bootstrap 50/200 (no convergidas hasta ahora: 0; punto de guardado escrito)
+
+[2026-11-18 23:33:48]    AVISO: ajuste no convergido (bootstrap réplica 56): dev.ratio = -3.9321 < 0 (devianza peor que la del modelo nulo); |intercepto| = 1.861e+04 > 100; max |beta| = 4.071e+05 > 100; la devianza explicada baja a lo largo del camino
+
+[2026-11-18 23:33:48]    bootstrap 75/200 (no convergidas hasta ahora: 1; punto de guardado escrito)
+
+[2026-11-18 23:52:48] === Sección 6, etapa 'bootstrap' (PID 20488) ===
+
+[2026-11-18 23:52:51] Bootstrap de coeficientes: B = 200, C = 10
+
+[2026-11-18 23:52:51] Bootstrap desde el punto de guardado: 75 réplicas hechas de 200 planeadas (thresh = 1e-10)
+
+[2026-11-18 23:53:16]    AVISO: ajuste no convergido (bootstrap réplica 56): dev.ratio = -3.9321 < 0 (devianza peor que la del modelo nulo); |intercepto| = 1.861e+04 > 100; max |beta| = 4.071e+05 > 100; la devianza explicada baja a lo largo del camino
+
+[2026-11-18 23:53:18] Réplicas no convergidas: 1 de 75 | segundos por ajuste: 84.9 | procesos: 4 | reloj por réplica: NA s | estimación para 200 réplicas: 70.7 min
+
+[2026-11-18 23:53:22] Grupos redundantes (dirección conjunta):
+
+ grupo                                              variables
+    G1 HasObfuscation + NoOfObfuscatedChar + ObfuscationRatio
+    G2                    NoOfLettersInURL + LetterRatioInURL
+    G3                      NoOfDegitsInURL + DegitRatioInURL
+    G4                       NoOfEqualsInURL + NoOfQMarkInURL
+ suma_beta_estandarizado IC95_inf_suma IC95_sup_suma
+                0.006172     -0.000126        0.3599
+                3.621124      2.979249        4.6083
+                3.104649      1.945758        3.9128
+                0.000919     -0.009659        0.0102
+                               direccion
+ dirección no determinada (IC incluye 0)
+     aumenta la probabilidad de phishing
+     aumenta la probabilidad de phishing
+ dirección no determinada (IC incluye 0)
+
+[2026-11-18 23:53:22] Razones de momios interpretables (primeras 12 por |beta|):
+
+              variable                tipo OR_por_DE IC95_inf_OR_por_DE
+    URLSimilarityIndex            continua  1.31e-06           3.94e-07
+     LargestLineLength            continua  7.95e+02           5.13e+00
+               IsHTTPS binaria (presencia)  4.57e-03           1.93e-03
+             NoOfImage            continua  9.74e-03           4.73e-03
+           NoOfSelfRef            continua  1.05e-02           5.78e-03
+            LineOfCode            continua  1.77e-02           7.02e-03
+       NoOfExternalRef            continua  2.53e-02           7.42e-03
+          DomainLength            continua  4.60e-02           1.29e-02
+ SpacialCharRatioInURL            continua  1.13e+01           5.64e+00
+          HasSocialNet binaria (presencia)  1.20e-01           8.81e-02
+              HasTitle binaria (presencia)  1.88e-01           1.27e-01
+      HasCopyrightInfo binaria (presencia)  2.34e-01           1.81e-01
+ IC95_sup_OR_por_DE direccion
+           4.89e-06 disminuye
+           2.18e+04   aumenta
+           8.52e-03 disminuye
+           3.73e-02 disminuye
+           3.57e-02 disminuye
+           6.62e-02 disminuye
+           5.46e-02 disminuye
+           1.52e-01 disminuye
+           2.74e+01   aumenta
+           2.23e-01 disminuye
+           2.95e-01 disminuye
+           2.99e-01 disminuye
+
+[2026-11-18 23:53:22] Etapa 'bootstrap' terminada en 33 s | ajustes no convergidos en la etapa: 1
+

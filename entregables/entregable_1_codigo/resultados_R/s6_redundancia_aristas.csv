@@ -1,0 +1,11 @@
+﻿"variable_1","variable_2","criterio","spearman"
+"HasObfuscation","NoOfObfuscatedChar","|Spearman| = 1.0000 (entrenamiento)",0.9999994004989647
+"HasObfuscation","ObfuscationRatio","|Spearman| = 1.0000 (entrenamiento)",0.9999993220837421
+"NoOfObfuscatedChar","ObfuscationRatio","|Spearman| = 1.0000 (entrenamiento)",0.9999995778929365
+"NoOfLettersInURL","LetterRatioInURL","|Spearman| = 0.9305 (entrenamiento)",0.9305477823627408
+"NoOfDegitsInURL","DegitRatioInURL","|Spearman| = 0.9968 (entrenamiento)",0.9967561343879239
+"NoOfEqualsInURL","NoOfQMarkInURL","|Spearman| = 0.9084 (entrenamiento)",0.9083522609007887
+"NoOfObfuscatedChar","HasObfuscation","derivación exacta: HasObfuscation = 1 si NoOfObfuscatedChar > 0",0.9999994004989647
+"NoOfObfuscatedChar","ObfuscationRatio","derivación exacta: ObfuscationRatio = NoOfObfuscatedChar / URLLength (3 decimales)",0.9999995778929365
+"NoOfLettersInURL","LetterRatioInURL","derivación exacta: LetterRatioInURL = NoOfLettersInURL / URLLength (3 decimales)",0.9305477823627408
+"NoOfDegitsInURL","DegitRatioInURL","derivación exacta: DegitRatioInURL = NoOfDegitsInURL / URLLength (3 decimales)",0.9967561343879239

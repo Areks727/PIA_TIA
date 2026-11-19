@@ -1,0 +1,7 @@
+﻿"rasgo","legitimo","phishing"
+"con_www",1,0.41454257268809747
+"https",1,0.48735449997523406
+"con_ruta_mas_de_3_barras",0,0.1957402545940859
+"termina_en_barra",0,0.36468373866957254
+"URLLength_igual_nchar_URL_menos_1",1,0.5180940115904701
+"IsHTTPS_igual_1",1,0.4922383476150379

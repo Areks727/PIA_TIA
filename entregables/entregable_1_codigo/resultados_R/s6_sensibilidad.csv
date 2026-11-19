@@ -1,0 +1,19 @@
+﻿"escenario","modelo","n_predictores","n_prueba","phishing_en_prueba","AUC","VN","FP","FN","VP","sensibilidad_0_5","tasa_falsas_alarmas_0_5","nota","ajustes_no_convergidos_escenario"
+"principal","logística L2",48,58843,25130,0.9999998630796186,33713,0,4,25126,0.9998408276959809,0,"",0
+"principal","bosque aleatorio",48,58843,25130,1,33713,0,0,25130,1,0,"",0
+"sin índice de similitud","logística L2",47,58843,25130,0.9999859302504679,33712,1,6,25124,0.9997612415439714,2.9662148132767776e-5,"",0
+"sin índice de similitud","bosque aleatorio",47,58843,25130,0.9999985092203306,33713,0,6,25124,0.9997612415439714,0,"",0
+"solo variables léxicas del dataset","logística L2",20,58843,25130,0.9986017537210976,33710,3,187,24943,0.992558694787107,8.898644439830333e-5,"",0
+"solo variables léxicas del dataset","bosque aleatorio",20,58843,25130,0.9989124585259608,33702,11,154,24976,0.9938718662952646,3.2628362946044554e-4,"",0
+"solo variables de página HTML","logística L2",27,58843,25130,0.9997305312467124,33515,198,154,24976,0.9938718662952646,0.005873105330288019,"",0
+"solo variables de página HTML","bosque aleatorio",27,58843,25130,0.9999239041373669,33686,27,102,25028,0.995941106247513,8.0087799958473e-4,"",0
+"solo variables recalculadas desde la URL","logística L2",16,58843,25130,0.9957705784044524,33701,12,375,24755,0.9850775964982094,3.559457775932133e-4,"",0
+"solo variables recalculadas desde la URL","bosque aleatorio",16,58843,25130,0.997712109412038,33703,10,241,24889,0.9904098686828492,2.9662148132767775e-4,"",0
+"partición por dominio (sin dominios compartidos)","logística L2",48,60294,26579,1,33715,0,0,26579,1,0,"",0
+"partición por dominio (sin dominios compartidos)","bosque aleatorio",48,60294,26579,1,33715,0,0,26579,1,0,"",0
+"razones recalculadas con nchar(URL)","logística L2",48,58843,25130,0.999999713175408,33713,0,3,25127,0.9998806207719857,0,"ObfuscationRatio, LetterRatioInURL y DegitRatioInURL = conteo / nchar(URL), 3 decimales",0
+"razones recalculadas con nchar(URL)","bosque aleatorio",48,58843,25130,1,33713,0,0,25130,1,0,"ObfuscationRatio, LetterRatioInURL y DegitRatioInURL = conteo / nchar(URL), 3 decimales",0
+"sin TLDLegitimateProb (cálculo no documentado por UCI)","logística L2",47,58843,25130,0.9999996093047739,33713,0,2,25128,0.9999204138479905,0,"",0
+"sin TLDLegitimateProb (cálculo no documentado por UCI)","bosque aleatorio",47,58843,25130,1,33713,0,0,25130,1,0,"",0
+"subconjunto con formato comparable a legítimas","bosque aleatorio",40,33956,243,1,33713,0,0,243,1,0,"sin 8 columnas constantes o casi constantes",0
+"subconjunto con formato comparable a legítimas","logística L2",NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,"sin resultado: el ajuste no terminó dentro del límite de tiempo (limitación no resuelta)",NA

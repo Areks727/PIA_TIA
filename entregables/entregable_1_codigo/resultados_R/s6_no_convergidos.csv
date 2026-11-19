@@ -1,0 +1,2 @@
+﻿"etapa","contexto","C","lambda","n","dev_ratio","intercepto","max_abs_beta","jerr","npasses","motivo"
+"bootstrap","bootstrap réplica 56",10,5.664855801095583e-7,176527,-3.9320508433742956,-18608.849137934885,407132.7835569779,NA,NA,"dev.ratio = -3.9321 < 0 (devianza peor que la del modelo nulo); |intercepto| = 1.861e+04 > 100; max |beta| = 4.071e+05 > 100; la devianza explicada baja a lo largo del camino"

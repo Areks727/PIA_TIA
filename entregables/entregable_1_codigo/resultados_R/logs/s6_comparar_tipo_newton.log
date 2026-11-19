@@ -1,0 +1,100 @@
+[2026-11-18 21:44:25] pliegue 2 C=10 grueso (4 lambdas) Newton          converge=FALSE dev.ratio=-11.600443 ll=14.302302 t=41.7s
+
+[2026-11-18 21:45:15] pliegue 2 C=10 grueso (4 lambdas) modified.Newton converge=TRUE dev.ratio=0.999080 ll=0.000796 t=49.5s
+
+[2026-11-18 21:45:24] pliegue 2 C=10 fino (31 lambdas)  Newton          converge=TRUE dev.ratio=0.999788 ll=0.000606 t=9.0s
+
+[2026-11-18 21:46:39] pliegue 2 C=10 fino (31 lambdas)  modified.Newton converge=TRUE dev.ratio=0.999081 ll=0.000796 t=74.4s
+
+[2026-11-18 21:46:45] pliegue 1 C=10 grueso (4 lambdas) Newton          converge=TRUE dev.ratio=0.999840 ll=0.000740 t=5.1s
+
+[2026-11-18 21:47:38] pliegue 1 C=10 grueso (4 lambdas) modified.Newton converge=TRUE dev.ratio=0.999133 ll=0.000965 t=52.5s
+
+[2026-11-18 21:47:46] pliegue 1 C=10 fino (31 lambdas)  Newton          converge=TRUE dev.ratio=0.999838 ll=0.000737 t=8.0s
+
+[2026-11-18 21:49:01] pliegue 1 C=10 fino (31 lambdas)  modified.Newton converge=TRUE dev.ratio=0.999134 ll=0.000962 t=74.5s
+
+[2026-11-18 21:49:05] pliegue 2 C=1 grueso (4 lambdas) Newton          converge=TRUE dev.ratio=0.999443 ll=0.000606 t=3.5s
+
+[2026-11-18 21:49:53] pliegue 2 C=1 grueso (4 lambdas) modified.Newton converge=TRUE dev.ratio=0.998930 ll=0.000891 t=47.0s
+
+[2026-11-18 21:50:00] pliegue 2 C=1 fino (31 lambdas)  Newton          converge=TRUE dev.ratio=0.999446 ll=0.000611 t=7.5s
+
+[2026-11-18 21:51:16] pliegue 2 C=1 fino (31 lambdas)  modified.Newton converge=TRUE dev.ratio=0.998929 ll=0.000892 t=75.2s
+
+ pliegue  C             camino            tipo converge  dev_ratio
+       2 10 grueso (4 lambdas)          Newton    FALSE -11.600443
+       2 10 grueso (4 lambdas) modified.Newton     TRUE   0.999080
+       2 10  fino (31 lambdas)          Newton     TRUE   0.999788
+       2 10  fino (31 lambdas) modified.Newton     TRUE   0.999081
+       1 10 grueso (4 lambdas)          Newton     TRUE   0.999840
+       1 10 grueso (4 lambdas) modified.Newton     TRUE   0.999133
+       1 10  fino (31 lambdas)          Newton     TRUE   0.999838
+       1 10  fino (31 lambdas) modified.Newton     TRUE   0.999134
+       2  1 grueso (4 lambdas)          Newton     TRUE   0.999443
+       2  1 grueso (4 lambdas) modified.Newton     TRUE   0.998930
+       2  1  fino (31 lambdas)          Newton     TRUE   0.999446
+       2  1  fino (31 lambdas) modified.Newton     TRUE   0.998929
+ logloss_validacion max_abs_dif_beta_vs_newton_fino segundos
+        1.43023e+01                     1.73317e+05    41.73
+        7.96114e-04                     6.66487e+00    49.52
+        6.06435e-04                     0.00000e+00     9.00
+        7.95861e-04                     6.67746e+00    74.45
+        7.40332e-04                     1.06748e-01     5.12
+        9.64681e-04                     6.15611e+00    52.50
+        7.37038e-04                     0.00000e+00     7.97
+        9.62281e-04                     6.17398e+00    74.54
+        6.06191e-04                     1.22999e-01     3.48
+        8.90781e-04                     2.29498e+00    47.00
+        6.10666e-04                     0.00000e+00     7.53
+        8.92156e-04                     2.28869e+00    75.25
+
+[2026-11-18 21:55:40] pliegue 2 C=10  Newton, camino fino, thresh 1e-7 (método principal)       objetivo=0.0002603232 (devianza media 0.00028919 + penalización 0.00011573) 9.3 s
+
+[2026-11-18 21:56:58] pliegue 2 C=10  modified.Newton, camino fino, thresh 1e-7                  objetivo=0.0006523899 (devianza media 0.00125448 + penalización 0.00002515) 77.9 s
+
+[2026-11-18 21:57:31] pliegue 2 C=10  Newton, camino fino, thresh 1e-10 (referencia del óptimo) objetivo=0.0002596239 (devianza media 0.00027941 + penalización 0.00011992) 32.1 s
+
+[2026-11-18 21:57:39] pliegue 1 C=10  Newton, camino fino, thresh 1e-7 (método principal)       objetivo=0.0002215205 (devianza media 0.00022087 + penalización 0.00011109) 7.4 s
+
+[2026-11-18 21:58:55] pliegue 1 C=10  modified.Newton, camino fino, thresh 1e-7                  objetivo=0.0006162966 (devianza media 0.00118196 + penalización 0.00002532) 76.5 s
+
+[2026-11-18 21:59:22] pliegue 1 C=10  Newton, camino fino, thresh 1e-10 (referencia del óptimo) objetivo=0.0002202798 (devianza media 0.00021429 + penalización 0.00011313) 26.1 s
+
+[2026-11-18 21:59:31] pliegue 2 C=1   Newton, camino fino, thresh 1e-7 (método principal)       objetivo=0.0007673500 (devianza media 0.00075610 + penalización 0.00038930) 8.2 s
+
+[2026-11-18 22:00:45] pliegue 2 C=1   modified.Newton, camino fino, thresh 1e-7                  objetivo=0.0009524897 (devianza media 0.00146250 + penalización 0.00022124) 74.2 s
+
+[2026-11-18 22:01:00] pliegue 2 C=1   Newton, camino fino, thresh 1e-10 (referencia del óptimo) objetivo=0.0007673005 (devianza media 0.00075195 + penalización 0.00039132) 14.6 s
+
+ pliegue  C                                                  variante
+       2 10       Newton, camino fino, thresh 1e-7 (método principal)
+       2 10                 modified.Newton, camino fino, thresh 1e-7
+       2 10 Newton, camino fino, thresh 1e-10 (referencia del óptimo)
+       1 10       Newton, camino fino, thresh 1e-7 (método principal)
+       1 10                 modified.Newton, camino fino, thresh 1e-7
+       1 10 Newton, camino fino, thresh 1e-10 (referencia del óptimo)
+       2  1       Newton, camino fino, thresh 1e-7 (método principal)
+       2  1                 modified.Newton, camino fino, thresh 1e-7
+       2  1 Newton, camino fino, thresh 1e-10 (referencia del óptimo)
+ objetivo_penalizado diferencia_objetivo_vs_referencia
+       0.00026032319                     6.9932591e-07
+       0.00065238993                     3.9276607e-04
+       0.00025962386                     0.0000000e+00
+       0.00022152054                     1.2406988e-06
+       0.00061629665                     3.9601681e-04
+       0.00022027984                     0.0000000e+00
+       0.00076735001                     4.9528554e-08
+       0.00095248974                     1.8518926e-04
+       0.00076730048                     0.0000000e+00
+ max_abs_dif_beta_vs_referencia segundos
+                    0.592770541     9.31
+                    7.082539586    77.89
+                    0.000000000    32.13
+                    0.941122419     7.41
+                    6.759148880    76.54
+                    0.000000000    26.07
+                    0.050856772     8.18
+                    2.332777058    74.16
+                    0.000000000    14.59
+

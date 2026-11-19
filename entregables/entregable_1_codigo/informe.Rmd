@@ -1,0 +1,416 @@
+---
+title: "Auditoría estadística de detección de phishing con el conjunto PhiUSIIL"
+subtitle: "Producto integrador de estadística para seguridad"
+author: "Equipo: Alejandro Martinez Moya, David Emiliano Rangel Tovar y Fernando Garza Chavez"
+date: "Fecha de entrega: 19 de noviembre de 2026"
+params:
+  anexo: true
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    code_folding: hide
+    self_contained: true
+    mathjax: null
+---
+
+<!-- PENDIENTES DE VERIFICAR (no borrar hasta confirmarlos):
+     1) Nombre del docente: verificado solo contra el documento del curso.
+     2) Referencia Prasad y Chandra (2024): volumen 136 y artículo 103545 verificados en Crossref.
+     3) Tamaño del archivo: 54.2 MiB; UCI lo muestra como 54.2 MB. -->
+
+```{r configuracion, include = FALSE}
+# Todas las cifras se leen de resultados_R/ (CSV); ninguna se escribe a mano.
+# Para regenerarlas, ver el Anexo técnico.
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = TRUE, error = FALSE,
+                      fig.align = "center", out.width = "80%")
+# Los avisos "package was built under R 4.6.2" no afectan los resultados; se silencian solo al cargar.
+suppressWarnings(suppressPackageStartupMessages({
+  source("codigo_R/comun.R", encoding = "UTF-8")
+  library(knitr)
+}))
+leer <- function(a) {
+  r <- ruta_res(a)
+  if (!file.exists(r)) stop("Falta ", r, ". Ejecuta primero los scripts de codigo_R/ (ver Anexo técnico).")
+  read.csv(r, fileEncoding = "UTF-8-BOM", check.names = FALSE, stringsAsFactors = FALSE)
+}
+existe <- function(a) file.exists(ruta_res(a))
+img <- function(a) normalizePath(ruta_res(a), winslash = "/", mustWork = TRUE)  # ruta absoluta: pandoc la incrusta
+f <- function(x, d = 3) formatC(x, format = "f", digits = d, big.mark = ",")
+n <- function(x) formatC(x, format = "d", big.mark = ",")
+fs <- function(x, d = 3) formatC(signif(x, d), format = "g", digits = d, big.mark = ",")  # cifras significativas
+pc <- function(x, d = 1) paste0(formatC(100 * x, format = "f", digits = d), " %")
+tabla <- function(df, caption, digits = 4, ...) kable(df, caption = caption, digits = digits,
+                                                      format.args = list(big.mark = ","), row.names = FALSE, ...)
+ctl <- leer("s4_control_calidad.csv"); v4 <- setNames(ctl$valor, ctl$concepto)
+inf <- leer("s5_inferencia.csv"); rownames(inf) <- inf$id
+reg <- leer("s5_reglas_deterministas.csv"); rv <- setNames(reg$valor, reg$indicador)
+fmt <- leer("s4_formato_por_clase.csv"); rownames(fmt) <- fmt$rasgo
+r1se <- leer("s6_regla_1se.csv")
+cvb <- leer("s6_cv_bosque.csv"); mb <- cvb[which.min(cvb$logloss_media), ]
+res <- leer("s6_resumen_prueba.csv"); rownames(res) <- res$modelo
+mat <- leer("s6_matriz_confusion_prueba.csv")
+sens <- leer("s6_sensibilidad.csv")
+sep <- leer("s6_separabilidad.csv")
+vifx <- leer("s6_seleccion_predictores.csv"); viff <- leer("s6_vif_final.csv")
+hay_boot <- existe("s6_bootstrap_convergencia.csv") && existe("s6_logistica_or.csv")
+um <- function(m, u, col) mat[mat$modelo == m & !is.na(mat$umbral) & abs(mat$umbral - u) < 1e-9, col]
+regla <- mat[mat$modelo == "regla de dos condiciones", ]
+C_best <- r1se$C_elegido[1]
+n_te <- regla$VN + regla$FP + regla$FN + regla$VP
+oofr <- leer("s6_umbrales_oof_entrenamiento.csv")[1, ]; n_tr <- oofr$VN + oofr$FP + oofr$FN + oofr$VP
+n_ph <- round(inf["I1", "n"] * inf["I1", "estimacion"]); prev <- inf["I1", "estimacion"]
+n_pred <- nrow(viff); n_cand <- n_pred + nrow(vifx)
+```
+
+**Docente:** Dr. Álvaro E. Cordero-Franco · **Grupo:** 061 · **Integrantes:** Alejandro Martinez Moya, David Emiliano Rangel Tovar y Fernando Garza Chavez · **Repositorio:** https://github.com/Areks727/PIA_TIA
+
+# 1. Resumen ejecutivo
+
+**Problema.** Un centro de operaciones de seguridad necesita marcar URL de phishing sin saturar a sus analistas con falsas alarmas. Un ataque omitido (falso negativo, FN) cuesta más que una falsa alarma (falso positivo, FP). Revisamos si el conjunto público PhiUSIIL (`r n(inf["I1", "n"])` URL tras quitar duplicados) permite estimar ese desempeño.
+
+**Hallazgos.**
+
+1. **Reglas simples separan casi todo.** Todas las URL legítimas tienen `URLSimilarityIndex = 100` y usan HTTPS. La regla «sin HTTPS o similitud < 100 = phishing» no produce falsas alarmas y detecta el `r pc(as.numeric(rv[["regla [sin HTTPS o similitud < 100]: phishing detectado (%)"]]) / 100, 2)` del phishing.
+2. **Los modelos casi no mejoran a esa regla.** La regresión logística y el bosque aleatorio tienen un AUC de `r f(res["logística L2", "AUC_ROC"], 7)` y `r f(res["bosque aleatorio", "AUC_ROC"], 7)`. Con umbral 0.50, en `r n(n_te)` URL de prueba:
+   - logística: `r um("logística L2", 0.5, "FP")` FP y `r um("logística L2", 0.5, "FN")` FN;
+   - bosque: `r um("bosque aleatorio", 0.5, "FP")` y `r um("bosque aleatorio", 0.5, "FN")`;
+   - regla: `r regla$FP` y `r regla$FN`.
+
+   Un AUC tan alto **no** muestra el desempeño con tráfico real.
+3. **Los coeficientes solo indican dirección.** Las clases están casi perfectamente separadas, así que la logística sin penalizar no tiene solución. Las razones de momios indican si una característica sube o baja la probabilidad de phishing, pero no cuánto con precisión. Son asociaciones, no causas.
+
+**Recomendación.** Usar la regla de dos condiciones como línea base y no desplegar un modelo entrenado con PhiUSIIL sin validarlo con URL propias. **Riesgo principal:** que el modelo aprenda cómo se construyó la muestra y no el phishing. **Limitación principal:** no hay una muestra externa para medir el desempeño real.
+
+# 2. Problema y objetivos
+
+**Pregunta.** ¿Qué características distinguen a los sitios de phishing y qué modelo los detecta con un equilibrio razonable entre ataques omitidos y falsas alarmas?
+
+**Usuario.** Analistas de un centro de operaciones de seguridad que deciden qué URL bloquear o revisar.
+
+**Objetivo.** Seguir un flujo estadístico completo (datos, descripción, inferencia, modelos y evaluación). Comparar un modelo interpretable (regresión logística) con uno flexible (bosque aleatorio) y dar una recomendación.
+
+**Costos de error.** Una falsa alarma bloquea un sitio legítimo y cansa al equipo. Un ataque omitido permite robar credenciales o comprometer equipos: es el error más caro.
+
+**Riesgos del análisis.**
+
+- Elegir variables, parámetros o umbrales mirando los datos de prueba (fuga de información).
+- Que las clases se separen por cómo se armó la muestra y no por rasgos reales del phishing (sección 3.3).
+
+# 3. Datos y preparación
+
+## 3.1 Fuente y depuración
+
+PhiUSIIL Phishing URL (UCI Machine Learning Repository; licencia CC BY 4.0; Prasad y Chandra, 2024).
+
+- **Archivo:** `r n(as.numeric(v4[["filas en el archivo"]]))` filas y `r v4[["columnas en el archivo"]]` columnas; pesa 54.2 MiB (UCI lo muestra como 54.2 MB). UCI reporta 54 variables; el archivo tiene 56 columnas porque también incluye `FILENAME` y `label`. La versión se comprueba con su huella SHA-256 (Anexo C). No hay valores faltantes.
+- **Clase.** En UCI, `label = 1` es legítima. Nuestra clase positiva es phishing: `phishing = 1 − label`.
+- **Duplicados.** Hay `r v4[["URL distintas repetidas"]]` URL repetidas, ninguna con etiquetas contradictorias. Conservamos la primera aparición: se eliminan `r v4[["filas que se eliminan al deduplicar"]]` filas, todas de phishing. Quedan `r n(inf["I1", "n"])` URL, `r n(n_ph)` de ellas phishing (`r pc(prev)`).
+
+## 3.2 Variables
+
+```{r diccionario}
+# Diccionario de variables: cada columna del archivo, su rol, si se incluye en los modelos y por qué.
+# La decisión final también refleja el filtro VIF del entrenamiento (sección 6.2).
+dic <- leer("s4_diccionario_variables.csv")
+motivo_rol <- c(
+  "identificador" = "identifica la observación; no es un rasgo que generalice",
+  "texto libre" = "texto libre sin procesar",
+  "categórica de alta cardinalidad" = "demasiadas categorías; la resumen TLDLegitimateProb y TLDLength",
+  "respuesta original" = "es la respuesta; se usa para crear phishing = 1 − label",
+  "predictor con artefacto" = "desfase ligado a la clase (sección 3.3); la longitud se recalcula desde la URL",
+  "predictor candidato" = "predictor numérico o binario")
+dic$incluida <- ifelse(dic$rol == "predictor candidato" & !dic$variable %in% vifx$variable_eliminada, "sí", "no")
+dic$motivo <- unname(motivo_rol[dic$rol])
+eliminada_vif <- dic$variable %in% vifx$variable_eliminada
+dic$motivo[eliminada_vif] <- sprintf("VIF de %s en el entrenamiento (mayor que 10)", f(vifx$VIF_en_entrenamiento, 2))
+notas_utiles <- nzchar(dic$nota) & !dic$variable %in% c("FILENAME", "label", "URLLength")
+dic$motivo[notas_utiles] <- paste0(dic$motivo[notas_utiles], "; ", dic$nota[notas_utiles])
+d <- dic[, c("variable", "rol", "grupo", "incluida", "motivo")]
+names(d) <- c("columna", "rol", "grupo", "incluida en los modelos", "motivo")
+tabla(d, paste0("Tabla 1. Diccionario de las ", nrow(dic), " columnas del archivo: rol, grupo de variables, si se incluye en los modelos y por qué."))
+```
+
+**Columnas excluidas.**
+
+- Identificadores (`FILENAME`, `URL`, `Domain`) y texto libre (`Title`).
+- `TLD`, con `r v4[["niveles de TLD"]]` categorías; la resumen `TLDLegitimateProb` y `TLDLength`.
+- `URLLength`, por el problema de la sección 3.3. La longitud se vuelve a calcular contando los caracteres de la URL.
+
+Quedan `r n_cand` predictores candidatos; tras el filtro VIF, `r n_pred` entran en los modelos (columna «incluida» de la Tabla 1).
+
+## 3.3 Artefactos de la muestra
+
+```{r artefactos}
+art <- data.frame(
+  rasgo = c("Contiene «www.»", "Empieza por https://", "Tiene ruta (más de 3 barras)", "Termina en «/»",
+            "URLLength = caracteres − 1", "IsHTTPS = 1"),
+  legitimas = fmt[c("con_www", "https", "con_ruta_mas_de_3_barras", "termina_en_barra",
+                    "URLLength_igual_nchar_URL_menos_1", "IsHTTPS_igual_1"), "legitimo"],
+  phishing = fmt[c("con_www", "https", "con_ruta_mas_de_3_barras", "termina_en_barra",
+                   "URLLength_igual_nchar_URL_menos_1", "IsHTTPS_igual_1"), "phishing"])
+tabla(art, "Tabla 2. Proporción de URL con cada rasgo, por clase.", digits = 3)
+```
+
+- **Formato uniforme.** Todas las legítimas tienen el mismo formato: www, https, sin ruta y sin barra final. Solo `r n(as.numeric(rv[["phishing con formato comparable a legítimas (n)"]]))` URL de phishing lo comparten.
+- **`URLLength`.** En todas las legítimas vale un carácter menos que la URL; en el phishing, solo en una parte. Usarla le «diría» la clase al modelo, por eso se excluye.
+- **Índice de similitud y HTTPS.** El 100 % de las legítimas tiene índice de similitud 100 y HTTPS.
+
+Estos rasgos reflejan cómo se armó la muestra, no necesariamente cómo es el phishing real.
+
+# 4. Análisis descriptivo
+
+```{r fig-clases, fig.cap = paste0("Figura 1. Número de URL por clase tras quitar duplicados. Hay ", pc(prev), " de phishing: la muestra está algo desbalanceada, así que la exactitud sola no basta para evaluar."), out.width = "55%"}
+include_graphics(img("fig_s5_1_clases.png"))
+```
+
+```{r fig-similitud, fig.cap = "Figura 2. URLSimilarityIndex (escala de 0 a 100) por clase. Todas las legítimas valen 100 y casi todo el phishing está por debajo: esta variable sola separa casi por completo las clases.", out.width = "70%"}
+include_graphics(img("fig_s5_3_similitud_por_clase.png"))
+```
+
+```{r resumen-numerico-datos}
+num <- leer("s5_resumen_numerico_por_clase.csv")
+med <- function(v, cl, col = "mediana") num[num$variable == v & num$clase == cl, col]
+```
+
+```{r fig-longitud, fig.cap = paste0("Figura 3. Longitud de la URL (caracteres, en escala logarítmica de base 10) por clase; cada clase tiene área 1. Las legítimas se concentran en un rango estrecho (cuartiles de ", med("longitud_url", "legítimo", "Q1"), " a ", med("longitud_url", "legítimo", "Q3"), " caracteres), mientras que el phishing tiene una cola larga hacia URL más largas."), out.width = "70%"}
+include_graphics(img("fig_s5_2_longitud_url.png"))
+```
+
+```{r tabla-numerica}
+clave <- c("longitud_url", "URLSimilarityIndex", "NoOfExternalRef", "NoOfImage", "NoOfJS", "LineOfCode", "CharContinuationRate")
+tn <- num[num$variable %in% clave, c("variable", "clase", "media", "mediana", "desv_est", "Q1", "Q3")]
+tn <- tn[order(match(tn$variable, clave), tn$clase), ]
+names(tn) <- c("variable", "clase", "media", "mediana", "desviación estándar", "cuartil 1", "cuartil 3")
+tabla(tn, "Tabla 3. Resumen numérico por clase de siete variables clave (muestra sin duplicados).", digits = 2)
+```
+
+Las páginas legítimas tienen mucho más contenido: por ejemplo, una mediana de `r med("NoOfExternalRef", "legítimo")` recursos externos y `r med("NoOfJS", "legítimo")` scripts, frente a `r med("NoOfExternalRef", "phishing")` y `r med("NoOfJS", "phishing")` en el phishing. En casi todas las variables la media supera con mucho a la mediana y la desviación estándar es grande, señal de distribuciones asimétricas con valores extremos.
+
+```{r fig-binarias, fig.cap = "Figura 4. Porcentaje de URL con cada característica binaria, por clase. Las legítimas tienen con mucha más frecuencia HTTPS, enlaces a redes sociales, aviso de copyright, favicon y botón de envío; la IP como dominio solo aparece en el phishing.", out.width = "80%"}
+include_graphics(img("fig_s5_5_binarias_por_clase.png"))
+```
+
+```{r tabla-descriptiva}
+bin <- leer("s5_resumen_binario_por_clase.csv")
+tabla(bin, "Tabla 4. Proporción de URL con cada característica binaria, por clase, y diferencia en puntos porcentuales.", digits = 3)
+```
+
+Las mayores diferencias están en los enlaces a redes sociales y el aviso de copyright, más de `r floor(min(abs(bin$diferencia_pp[bin$variable %in% c("HasSocialNet", "HasCopyrightInfo")])))` puntos porcentuales cada una. El phishing tiene además URL más largas (sección 5, I3).
+
+```{r fig-correlacion, fig.cap = "Figura 5. Correlación de Spearman entre doce variables seleccionadas (muestra sin duplicados). Las variables del contenido de la página (recursos externos, imágenes, líneas de código, autorreferencias, redes sociales) y el índice de similitud están muy correlacionadas entre sí, así que aportan información en parte redundante; la longitud de la URL se relaciona sobre todo con la longitud del dominio.", out.width = "75%"}
+include_graphics(img("fig_s5_4_correlacion.png"))
+```
+
+**Calidad, sesgo y representatividad.**
+
+- **Calidad:** el archivo no tiene valores faltantes. Solo hubo `r v4[["filas que se eliminan al deduplicar"]]` URL duplicadas, todas de phishing, que se eliminaron, y la versión se comprueba con su huella SHA-256.
+- **Sesgo:** las legítimas comparten un formato uniforme (www, https, sin ruta) y un índice de similitud de 100. Esos rasgos reflejan cómo se armó la muestra más que el comportamiento del phishing.
+- **Representatividad:** la proporción de phishing (`r pc(prev)`) es probablemente mucho mayor que en el tráfico que revisa un centro de seguridad. Hay `r n(as.numeric(v4[["dominios distintos (Domain)"]]))` dominios distintos para `r n(as.numeric(v4[["filas en el archivo"]]))` filas y el archivo no tiene fecha de recolección, así que los resultados no se pueden generalizar sin una muestra externa.
+
+# 5. Inferencia estadística
+
+```{r inferencia}
+ti <- inf[, c("id", "prueba", "estadistico", "valor_p", "estimacion", "IC95_inf", "IC95_sup")]
+ti$valor_p <- ifelse(is.na(ti$valor_p), NA, ifelse(ti$valor_p < 0.001, "< 0.001", f(ti$valor_p, 3)))
+tabla(ti, "Tabla 5. Cuatro análisis inferenciales (nivel de significancia 0.05).", digits = 6)
+```
+
+- **I1. Prevalencia.**
+  - Resultado: la proporción de phishing es `r f(inf["I1", "estimacion"], 4)`, con un intervalo de confianza de 95 % (método de Wilson) de `r f(inf["I1", "IC95_inf"], 4)` a `r f(inf["I1", "IC95_sup"], 4)`.
+  - Supuestos: observaciones independientes tras quitar duplicados.
+- **I2. HTTPS según la clase (prueba z de dos proporciones).**
+  - Resultado: el phishing usa HTTPS `r f(-inf["I2", "estimacion"] * 100, 1)` puntos porcentuales menos que las legítimas (IC 95 %: `r f(-inf["I2", "IC95_sup"] * 100, 1)` a `r f(-inf["I2", "IC95_inf"] * 100, 1)`). Se rechaza que las proporciones sean iguales.
+  - Supuestos: muestras independientes, conteos esperados mayores que 5.
+- **I3. Longitud de la URL (Mann-Whitney).**
+  - Resultado: la probabilidad de que una URL de phishing sea más larga que una legítima es `r f(inf["I3", "estimacion"], 3)` (IC 95 %: `r f(inf["I3", "IC95_inf"], 3)` a `r f(inf["I3", "IC95_sup"], 3)`). Es una diferencia real pero moderada.
+  - Supuestos: no exige normalidad.
+- **I4. Enlaces a redes sociales (chi-cuadrada de independencia).**
+  - Resultado: sin estos enlaces, los momios de phishing son `r f(inf["I4", "estimacion"], 0)` veces mayores (IC 95 %: `r f(inf["I4", "IC95_inf"], 0)` a `r f(inf["I4", "IC95_sup"], 0)`).
+  - Supuestos: conteos esperados mayores que 5.
+
+Con tantas observaciones casi cualquier diferencia es significativa, así que importa más el **tamaño** del efecto que el valor p. Además, son asociaciones en esta muestra, **no causas**.
+
+# 6. Modelación
+
+## 6.1 Protocolo
+
+- **Partición.** Partición 75/25 estratificada por clase con semilla 2026: `r n(n_tr)` URL para entrenar y `r n(n_te)` para probar.
+- **Sin fuga de información.** Todo lo que se aprende de los datos se decide solo con el entrenamiento: qué variables quedan, la penalización, la profundidad del bosque y el umbral. La prueba se usa una sola vez, para reportar.
+- **Mismos predictores.** Los dos modelos usan los mismos predictores.
+
+## 6.2 Colinealidad (VIF)
+
+Con el entrenamiento se calculó el factor de inflación de la varianza (VIF) y se quitó, una por una, la variable con VIF mayor que 10. Se eliminó `r vifx$variable_eliminada` (VIF = `r f(vifx$VIF_en_entrenamiento, 2)`), muy correlacionada con `URLTitleMatchScore`. Quedan **`r n_pred` predictores**; el VIF máximo restante es `r f(max(viff$VIF_final), 2)`.
+
+## 6.3 Separabilidad
+
+```{r separacion}
+s <- sep[, c("metodo", "iteraciones_o_C", "logverosimilitud", "max_abs_coef_por_DE", "n_p_ajustada_extrema")]
+s$metodo <- ifelse(startsWith(s$metodo, "glm"), "Logística sin penalizar (iteraciones)", "Logística con penalización L2 (valor de C)")
+names(s) <- c("modelo", "iteraciones o C", "log-verosimilitud", "coeficiente máximo (por DE)", "URL con probabilidad 0 o 1")
+tabla(s, "Tabla 6. Diagnóstico de separación en el entrenamiento.", digits = 3)
+```
+
+La regresión logística común (sin penalizar) **no tiene solución**: con más iteraciones los coeficientes crecen sin límite y todas las URL reciben probabilidad 0 o 1. Esto ocurre cuando las clases están casi perfectamente separadas (separación cuasi completa; Albert y Anderson, 1984). Por eso:
+
+1. se usa una logística con **penalización L2** (ridge), que encoge los coeficientes y sí tiene solución;
+2. los intervalos de las razones de momios se obtienen por **bootstrap**;
+3. los coeficientes se interpretan solo por su **dirección**.
+
+En la tabla, C mayor significa menos penalización: el coeficiente máximo crece al relajarla.
+
+## 6.4 Los dos modelos
+
+**Regresión logística L2.** Es una regresión logística a la que se le resta una penalización proporcional a la suma de los coeficientes al cuadrado (con los predictores estandarizados). La fuerza de la penalización se controla con C (C menor = más penalización).
+
+- **Regla para elegir C.** C se eligió con validación cruzada de 5 pliegues en el entrenamiento, entre 0.01, 0.1, 1 y 10. La regla fue: el C con más penalización cuyo error medio (log-loss) esté a no más de un error estándar del mínimo. Resultado: **C = `r C_best`**, igual que en la versión en Python, que tomó el mínimo.
+- **Declaración.** Los resultados por pliegue de una prueba previa se vieron antes de fijar la regla. Con cualquier definición razonable del error estándar se obtiene el mismo C. La diferencia entre C = 1 y C = 10 es pequeña frente a la variación entre pliegues.
+
+**Bosque aleatorio.** Son 300 árboles de decisión, cada uno entrenado con una muestra distinta, cuyas probabilidades se promedian.
+
+- **Hiperparámetros.** La profundidad máxima y el tamaño mínimo de las hojas se eligieron con validación cruzada de 3 pliegues sobre 30,000 URL del entrenamiento: profundidad `r mb$max_depth` y hojas de al menos `r mb$min_bucket` URL, igual que en Python.
+
+## 6.5 Razones de momios
+
+```{r razones-momios, results = "asis"}
+if (!hay_boot) {
+  cat("**Pendiente.** El bootstrap de las razones de momios no ha terminado; no se muestran cifras provisionales.\n")
+} else {
+  bc <- leer("s6_bootstrap_convergencia.csv")
+  orr <- leer("s6_logistica_or.csv")
+  # Escala de cada razón de momios: por desviación estándar en las continuas y por presencia
+  # (cambio de 0 a 1, columna OR_por_unidad) en las binarias.
+  bin <- orr$tipo != "continua"
+  orr$OR <- ifelse(bin, orr$OR_por_unidad, orr$OR_por_DE)
+  orr$OR_inf <- ifelse(bin, orr$IC95_inf_OR_por_unidad, orr$IC95_inf_OR_por_DE)
+  orr$OR_sup <- ifelse(bin, orr$IC95_sup_OR_por_unidad, orr$IC95_sup_OR_por_DE)
+  cat(sprintf(paste0("Intervalos de confianza de 95 %% por bootstrap percentil con **B = %d réplicas (%d usadas)**, con C = %g fijo. ",
+                     "Se planearon %d réplicas, pero el cálculo se cerró en el punto de guardado de %d **por tiempo**: ",
+                     "cada réplica tarda más de un minuto y algunas mucho más. ",
+                     "%d %s no convergió (su ajuste falló numéricamente) y se excluyó de los intervalos. ",
+                     "Con tan pocas réplicas, los extremos de los intervalos son menos estables, y por la separación casi perfecta ",
+                     "las razones de momios son **direccionales**: indican si la característica sube o baja la probabilidad de phishing, no cuánto con precisión.\n\n"),
+              bc$B, bc$replicas_convergidas, bc$C, bc$B_planeado, bc$B, bc$replicas_no_convergidas,
+              if (bc$replicas_no_convergidas == 1) "réplica" else "réplicas"))
+  ti <- orr[is.na(orr$grupo_redundante), c("variable", "tipo", "OR", "OR_inf", "OR_sup", "direccion")]
+  names(ti) <- c("variable", "tipo", "razón de momios", "IC 95 % inferior", "IC 95 % superior", "dirección")
+  print(tabla(head(ti, 12), "Tabla 7. Razones de momios de las 12 variables interpretables con mayor efecto. Para continuas: por un aumento de una desviación estándar; para binarias: por la presencia.", digits = 4))
+  gr <- leer("s6_or_grupos_redundantes.csv")
+  g <- gr[, c("grupo", "variables", "IC95_inf_suma", "IC95_sup_suma", "direccion")]
+  names(g) <- c("grupo", "variables", "IC 95 % inferior (suma)", "IC 95 % superior (suma)", "dirección conjunta")
+  print(tabla(g, "Tabla 8. Grupos de variables redundantes: solo se interpreta la dirección conjunta.", digits = 3))
+}
+```
+
+```{r interpretacion, results = "asis"}
+if (hay_boot) {
+  top <- orr[is.na(orr$grupo_redundante) & !orr$IC_incluye_1, ][1:3, ]
+  cat("**Interpretación de tres efectos** (manteniendo constantes las demás variables):\n\n")
+  for (i in seq_len(nrow(top))) {
+    x <- top[i, ]
+    esc <- if (x$tipo == "continua") "un aumento de una desviación estándar" else "su presencia"
+    cat(sprintf("- **%s:** %s multiplica los momios de phishing por %s (IC 95 %%: %s a %s); es decir, %s la probabilidad de phishing.\n",
+                x$variable, esc, fs(x$OR), fs(x$OR_inf), fs(x$OR_sup), x$direccion))
+  }
+  cat("\nPor la separación casi perfecta, estas magnitudes dependen de la penalización: solo la **dirección** es confiable.\n")
+}
+```
+
+Algunas variables están muy relacionadas entre sí: correlación de Spearman de 0.9 o más en el entrenamiento, o una calculada a partir de otra. Sus razones de momios por separado no se interpretan; se reporta la dirección del grupo (Tabla 8).
+
+## 6.6 Influencia
+
+```{r influencia}
+ir <- leer("s6_influencia_reajuste.csv")
+pr <- ir[!startsWith(ir$conjunto, "control"), c("conjunto", "n_quitadas", "phishing_entre_quitadas", "max_abs_delta_beta",
+                                                  "variable_max_delta", "cambios_de_signo", "max_abs_delta_p_prueba")]
+names(pr) <- c("observaciones quitadas", "n", "de phishing", "cambio máximo de un coeficiente", "en la variable",
+               "coeficientes que cambian de signo", "cambio máximo de una probabilidad en la prueba")
+tabla(pr, "Tabla 9. Cambios al volver a ajustar la logística sin las observaciones marcadas.", digits = 3)
+```
+
+Se marcaron las URL del entrenamiento con residuo de Pearson mayor que 3 en valor absoluto: casos que el modelo clasifica con mucha seguridad en la clase equivocada. Se volvió a ajustar el modelo sin ellas.
+
+- **Efecto de quitarlas.** Las `r pr[1, 2]` marcadas (`r pr[1, 3]` de phishing) cambian hasta `r f(pr[1, 4], 2)` un coeficiente estandarizado y voltean el signo de `r pr[1, 6]` coeficientes.
+- **Cuidado al leer los coeficientes.** Con separación casi perfecta, unas pocas URL mueven bastante los coeficientes; por eso solo se interpreta su dirección.
+- **Pendiente.** Estas URL conviene revisarlas a mano.
+
+# 7. Evaluación y umbrales
+
+```{r resumen-prueba}
+r <- res; names(r) <- c("modelo", "AUC", "AUC IC inf. (DeLong)", "AUC IC sup. (DeLong)", "precisión promedio", "log-loss", "Brier")
+tabla(r, "Tabla 10. Métricas globales en la prueba (una sola evaluación). La regla se evalúa como una predicción 0/1.", digits = 6)
+```
+
+```{r matriz-confusion}
+m <- mat[, c("modelo", "umbral", "VN", "FP", "FN", "VP", "sensibilidad", "especificidad", "precision", "F1",
+             "tasa_falsas_alarmas", "FP_por_10000_legitimas", "FN_por_10000_phishing")]
+names(m) <- c("modelo", "umbral", "VN", "FP", "FN", "VP", "sensibilidad", "especificidad", "precisión", "F1",
+              "tasa de falsas alarmas", "FP por 10,000 legítimas", "FN por 10,000 phishing")
+tabla(m, sprintf("Tabla 11. Matriz de confusión y métricas en la prueba (%s URL, %s de phishing) con cinco umbrales. VN = verdaderos negativos; VP = verdaderos positivos. La regla no usa umbral.",
+                 n(n_te), n(regla$FN + regla$VP)), digits = 5)
+```
+
+```{r fig-roc, fig.cap = "Figura 6. Curvas ROC en la prueba (izquierda) y detalle de la esquina superior izquierda (derecha). Las dos curvas casi tocan la esquina: con estos datos el AUC no distingue entre modelos.", fig.show = "hold", out.width = "48%"}
+include_graphics(c(img("fig_s6_1a_curva_roc.png"), img("fig_s6_1b_curva_roc_zoom.png")))
+```
+
+```{r fig-errores, fig.cap = "Figura 7. Falsas alarmas y ataques omitidos en la prueba según el umbral. Bajar el umbral cambia ataques omitidos por falsas alarmas.", out.width = "90%"}
+include_graphics(img("fig_s6_2_errores_por_umbral.png"))
+```
+
+**Lectura.**
+
+- Entre los umbrales 0.30 y 0.70 los dos modelos cometen muy pocos errores. Al bajar el umbral aparecen falsas alarmas; al subirlo, ataques omitidos.
+- Como un ataque omitido es más caro, conviene un umbral menor que 0.50. Su valor exacto debe fijarse con la razón de costos del equipo de seguridad y con datos de entrenamiento, no con esta prueba.
+
+## 7.1 Sensibilidad
+
+```{r sensibilidad}
+esc2 <- c("principal", "sin índice de similitud", "partición por dominio (sin dominios compartidos)")
+st <- sens[sens$escenario %in% esc2, c("escenario", "modelo", "n_predictores", "AUC", "FP", "FN")]
+names(st) <- c("escenario", "modelo", "predictores", "AUC", "FP (umbral 0.50)", "FN (umbral 0.50)")
+tabla(st, "Tabla 12. Dos escenarios de sensibilidad frente al modelo principal. Las demás pruebas están en el Anexo A.", digits = 5)
+```
+
+- **Sin el índice de similitud.** Los modelos siguen siendo casi perfectos, apoyados en otras variables.
+- **Partición por dominio.** Ningún dominio aparece a la vez en entrenamiento y prueba. El resultado no empeora, así que el desempeño no depende de memorizar dominios.
+
+# 8. Conclusiones y recomendación
+
+1. En PhiUSIIL, el phishing se distingue casi por completo con reglas simples de formato y con el índice de similitud. Ningún modelo mejora de forma relevante a la regla de dos condiciones, que no da falsas alarmas y omite `r regla$FN` de `r n(regla$FN + regla$VP)` ataques en la prueba.
+2. La logística L2 y el bosque aleatorio tienen un desempeño casi perfecto y muy parecido. Las diferencias son de unos pocos casos y dependen del umbral.
+3. `r if (hay_boot) { d <- orr[is.na(orr$grupo_redundante) & !orr$IC_incluye_1, ][1:4, ]; paste0("Las asociaciones son direccionales. Entre las variables interpretables con mayor efecto: ", paste(sprintf("%s (%s la probabilidad de phishing)", d$variable, d$direccion), collapse = "; "), ".") } else "Las razones de momios están pendientes (sección 6.5)."` Son asociaciones, no causas.
+
+**Recomendación.**
+
+- Usar la regla de dos condiciones como línea base y filtro inicial.
+- No desplegar un modelo entrenado con PhiUSIIL sin validarlo con URL propias.
+- Si se usa un modelo, fijar el umbral con la razón de costos del equipo y con datos de entrenamiento.
+
+# 9. Limitaciones
+
+- **Validez externa.** El desempeño observado no es el desempeño con tráfico real: las legítimas tienen un formato uniforme que el tráfico real no tiene.
+- **Separación casi perfecta.** Los coeficientes dependen de la penalización y de unas pocas URL; solo su dirección es confiable.
+- **Construcción de la muestra.** `URLLength` tiene un desfase ligado a la clase, y UCI no documenta cómo se calculó `TLDLegitimateProb`.
+- **Bootstrap.** Usa `r if (hay_boot) sprintf("%d réplicas (%d usadas)", bc$B, bc$replicas_convergidas) else "pocas réplicas"`: los extremos de los intervalos son aproximados.
+- **Diferencias con Python.** La partición, los pliegues, el bosque y el bootstrap son distintos, así que algunas cifras difieren en pocos casos (Anexo B).
+
+# 10. Referencias
+
+- Albert, A., y Anderson, J. A. (1984). On the existence of maximum likelihood estimates in logistic regression models. *Biometrika*, 71(1), 1–10.
+- Breiman, L. (2001). Random forests. *Machine Learning*, 45(1), 5–32.
+- Efron, B., y Tibshirani, R. J. (1993). *An introduction to the bootstrap*. Chapman & Hall.
+- Fox, J., y Weisberg, S. (2019). *An R companion to applied regression* (3.ª ed.). Sage.
+- Friedman, J., Hastie, T., y Tibshirani, R. (2010). Regularization paths for generalized linear models via coordinate descent. *Journal of Statistical Software*, 33(1), 1–22. https://doi.org/10.18637/jss.v033.i01
+- Hanley, J. A., y McNeil, B. J. (1982). The meaning and use of the area under a receiver operating characteristic (ROC) curve. *Radiology*, 143(1), 29–36.
+- Prasad, A., y Chandra, S. (2024). PhiUSIIL: A diverse security profile empowered phishing URL detection framework based on similarity index and incremental learning. *Computers & Security*, 136, 103545. https://doi.org/10.1016/j.cose.2023.103545
+- R Core Team (2026). *R: A language and environment for statistical computing*. R Foundation for Statistical Computing. https://www.R-project.org/
+- Robin, X., Turck, N., Hainard, A., Tiberti, N., Lisacek, F., Sanchez, J.-C., y Müller, M. (2011). pROC: an open-source package for R and S+ to analyze and compare ROC curves. *BMC Bioinformatics*, 12, 77.
+- UCI Machine Learning Repository (s. f.). *PhiUSIIL Phishing URL (Website)* [Conjunto de datos]. Licencia CC BY 4.0. https://archive.ics.uci.edu/dataset/967/phiusiil+phishing+url+dataset
+- Wilson, E. B. (1927). Probable inference, the law of succession, and statistical inference. *Journal of the American Statistical Association*, 22(158), 209–212.
+- Wright, M. N., y Ziegler, A. (2017). ranger: A fast implementation of random forests for high dimensional data in C++ and R. *Journal of Statistical Software*, 77(1), 1–17. https://doi.org/10.18637/jss.v077.i01
+
+```{r anexo, child = if (isTRUE(params$anexo)) "informe_anexo.Rmd" else character(0)}
+```

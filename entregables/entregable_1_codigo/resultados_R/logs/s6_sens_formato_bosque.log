@@ -1,0 +1,31 @@
+[2026-11-18 22:56:10] === Sección 6, etapa 'sens_formato_bosque' (PID 9032) ===
+
+[2026-11-18 22:56:21] Subconjunto de formato comparable: 135822 filas; entrenamiento = 101866 (phishing = 729)
+
+[2026-11-18 22:56:21] Columnas eliminadas en este escenario (calculado en su entrenamiento):
+
+           variable niveles_en_entrenamiento proporcion_valor_modal
+         IsDomainIP                        1               1.000000
+     HasObfuscation                        2               0.999980
+ NoOfObfuscatedChar                        2               0.999980
+   ObfuscationRatio                        3               0.999980
+    NoOfEqualsInURL                        7               0.999705
+     NoOfQMarkInURL                        3               0.999715
+ NoOfAmpersandInURL                        6               0.999941
+            IsHTTPS                        1               1.000000
+ filas_distintas_del_modal                                       motivo
+                         0                                    constante
+                         2 casi constante (> 99.9 % con el mismo valor)
+                         2 casi constante (> 99.9 % con el mismo valor)
+                         2 casi constante (> 99.9 % con el mismo valor)
+                        30 casi constante (> 99.9 % con el mismo valor)
+                        29 casi constante (> 99.9 % con el mismo valor)
+                         6 casi constante (> 99.9 % con el mismo valor)
+                         0                                    constante
+
+[2026-11-18 22:56:21] Escenario: subconjunto con formato comparable a legítimas (40 predictores; entrenamiento = 101866; prueba = 33956, phishing = 243)
+
+[2026-11-18 22:56:33]    bosque: AUC=1.00000 FP/FN a 0.5 = 0/0
+
+[2026-11-18 22:56:33] Etapa 'sens_formato_bosque' terminada en 22 s | ajustes no convergidos en la etapa: 0
+
