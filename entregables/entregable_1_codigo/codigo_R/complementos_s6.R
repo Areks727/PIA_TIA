@@ -182,6 +182,7 @@ delta_beta_un_paso <- function(s, i, y) {
 # predicciones con el ajuste completo. La escala se mantiene fija (la del entrenamiento
 # completo) para aislar el efecto de las observaciones; lambda = 1 / (C * n_restante).
 TOL_INFLUENCIA <- 1e-12  # tolerancia estricta: los cambios buscados son pequeños
+# Reajusta la logística sin las observaciones indicadas y compara coeficientes y predicciones de prueba contra el ajuste completo (cambio máximo, cambios de signo).
 comparar_reajuste <- function(Z, y, m0, quitar, Zte, etiqueta, boot_sd) {
   if (!length(quitar)) {
     return(data.frame(conjunto = etiqueta, n_quitadas = 0L, phishing_entre_quitadas = 0L,

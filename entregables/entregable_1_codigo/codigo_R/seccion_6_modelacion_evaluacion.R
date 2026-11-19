@@ -181,6 +181,7 @@ predecir_bosque <- function(m, Xb) predict(m, data = as.data.frame(Xb),
 # Nota: con lambda casi cero glmnet no converge en tiempo razonable en estos datos (otro
 # síntoma de la separación), por eso la rejilla de C se detiene en C = 10.
 C_DIAG <- c(0.01, 0.1, 1, 10)
+# Muestra la separación: ajusta la logística sin penalizar (más iteraciones) y con L2 (C creciente) y reporta coeficiente máximo y URL con probabilidad 0 o 1.
 diagnostico_separacion <- function(X, y) {
   Z <- aplicar_escala(X, ajustar_escala(X))
   datos <- data.frame(y = y, Z)
@@ -411,7 +412,7 @@ resumir_bootstrap <- function(X, cols, beta0, sd, boot, conv) {
 }
 
 # Cierre del bootstrap desde el punto de guardado (decisión del equipo, 2026-11-18): se
-# detuvo la corrida de 200 en el primer punto de guardado con 100 réplicas o más y se usan
+# detuvo la corrida de 200 en un punto de guardado (finalmente 75 réplicas) y se usan
 # las réplicas hechas. Las semillas por réplica no cambian, así que las réplicas son las
 # mismas que en la corrida completa. B real = número de réplicas hechas.
 bootstrap_desde_parcial <- function(X, y, cols, C, ruta_parcial) {

@@ -18,6 +18,7 @@ df <- cargar_datos(TRUE)
 X <- as.matrix(df[prep$idx_entrenamiento, prep$cols]); y <- df[[OBJETIVO]][prep$idx_entrenamiento]
 f <- pliegues_estratificados(y, K_CV)  # mismos pliegues que la validación cruzada
 
+# Función objetivo de la logística penalizada (log-verosimilitud negativa media + penalización L2); se usa para comparar los dos tipos de optimizador de glmnet.
 objetivo_penalizado <- function(Z, y, a0, b, lambda) {
   eta <- a0 + as.numeric(Z %*% b)
   nll <- mean(log1p(exp(-abs(eta))) + pmax(eta, 0) - y * eta)  # -(1/n) log-verosimilitud, estable

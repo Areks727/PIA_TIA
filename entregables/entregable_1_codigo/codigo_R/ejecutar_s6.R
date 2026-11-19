@@ -29,6 +29,7 @@ LIMITES_MIN <- c(preparar = 10, separacion = 20, cv_logistica = 30, cv_bosque = 
 # La etapa sens_formato_logistica solo hace un ajuste logístico: su límite de 5 min es el
 # límite por ajuste pedido para ese escenario.
 
+# Lanza una etapa como proceso de R independiente (Rscript) con límite de tiempo y registra su estado.
 lanzar_etapa <- function(etapa, rscript, script) {
   dir.create(ruta_res("etapas"), showWarnings = FALSE, recursive = TRUE)
   dir.create(ruta_res("logs"), showWarnings = FALSE, recursive = TRUE)

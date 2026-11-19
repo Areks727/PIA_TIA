@@ -11,6 +11,7 @@ source(if (dir.exists("codigo_R")) "codigo_R/seccion_6_modelacion_evaluacion.R" 
        encoding = "UTF-8")
 
 fallos <- 0L
+# Auxiliar: imprime [ok] o [FALLA] para una comprobación y cuenta los fallos.
 comprobar <- function(nombre, ok) {
   ok <- isTRUE(ok)
   cat(sprintf("[%s] %s\n", if (ok) "ok" else "FALLA", nombre))
