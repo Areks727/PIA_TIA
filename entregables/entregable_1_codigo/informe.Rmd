@@ -101,7 +101,7 @@ n_pred <- nrow(viff); n_cand <- n_pred + nrow(vifx)
 
 ## 3.1 Fuente y depuración
 
-PhiUSIIL Phishing URL (UCI Machine Learning Repository; licencia CC BY 4.0; Prasad y Chandra, 2024).
+PhiUSIIL Phishing URL (UCI Machine Learning Repository; licencia CC BY 4.0; Prasad y Chandra, 2024). Fecha de consulta de los datos: 30 de octubre de 2026.
 
 - **Archivo:** `r n(as.numeric(v4[["filas en el archivo"]]))` filas y `r v4[["columnas en el archivo"]]` columnas; pesa 54.2 MiB (UCI lo muestra como 54.2 MB). UCI reporta 54 variables; el archivo tiene 56 columnas porque también incluye `FILENAME` y `label`. La versión se comprueba con su huella SHA-256 (Anexo C). No hay valores faltantes.
 - **Clase.** En UCI, `label = 1` es legítima. Nuestra clase positiva es phishing: `phishing = 1 − label`.
@@ -216,18 +216,41 @@ ti$valor_p <- ifelse(is.na(ti$valor_p), NA, ifelse(ti$valor_p < 0.001, "< 0.001"
 tabla(ti, "Tabla 5. Cuatro análisis inferenciales (nivel de significancia 0.05).", digits = 6)
 ```
 
+```{r inferencia-apoyo, include = FALSE}
+# Valor p y decisión de cada análisis, leídos de s5_inferencia.csv.
+pv <- function(id) { x <- inf[id, "valor_p"]; if (is.na(x)) "no aplica" else if (x < 0.001) "p < 0.001" else paste("p =", f(x, 3)) }
+rechaza <- function(id) identical(inf[id, "decision"], "rechaza H0")
+decision_txt <- function(id) if (rechaza(id)) sprintf("Con α = 0.05 se rechaza H0 (%s).", pv(id)) else sprintf("Con α = 0.05 no se rechaza H0 (%s).", pv(id))
+```
+
 - **I1. Prevalencia.**
+  - Pregunta: ¿qué proporción de las URL es phishing y con qué incertidumbre?
+  - Parámetro: p, la proporción de phishing en la población que representa la muestra.
+  - H0: no aplica (estimación de intervalo). H1: no aplica.
   - Resultado: la proporción de phishing es `r f(inf["I1", "estimacion"], 4)`, con un intervalo de confianza de 95 % (método de Wilson) de `r f(inf["I1", "IC95_inf"], 4)` a `r f(inf["I1", "IC95_sup"], 4)`.
   - Supuestos: observaciones independientes tras quitar duplicados.
+  - Conclusión en contexto: cerca de `r round(100 * inf["I1", "estimacion"])` de cada 100 URL de la muestra son phishing, con un margen de error muy pequeño. Es la proporción de esta muestra, no la del tráfico que vería un centro de seguridad, donde el phishing es mucho más raro.
 - **I2. HTTPS según la clase (prueba z de dos proporciones).**
-  - Resultado: el phishing usa HTTPS `r f(-inf["I2", "estimacion"] * 100, 1)` puntos porcentuales menos que las legítimas (IC 95 %: `r f(-inf["I2", "IC95_sup"] * 100, 1)` a `r f(-inf["I2", "IC95_inf"] * 100, 1)`). Se rechaza que las proporciones sean iguales.
+  - Pregunta: ¿la proporción de URL con HTTPS es distinta entre phishing y legítimas?
+  - Parámetro: p_phishing − p_legítimo, la diferencia entre las proporciones de URL con HTTPS.
+  - H0: `r inf["I2", "H0"]`. H1: las proporciones difieren (p(phishing) ≠ p(legítimo)).
+  - Resultado: el phishing usa HTTPS `r f(-inf["I2", "estimacion"] * 100, 1)` puntos porcentuales menos que las legítimas (IC 95 %: `r f(-inf["I2", "IC95_sup"] * 100, 1)` a `r f(-inf["I2", "IC95_inf"] * 100, 1)`).
   - Supuestos: muestras independientes, conteos esperados mayores que 5.
+  - Conclusión en contexto: `r decision_txt("I2")` `r if (rechaza("I2")) "La falta de HTTPS es mucho más frecuente en el phishing, así que es una señal útil para el analista, aunque por sí sola no prueba que una URL sea maliciosa." else "No hay evidencia de que el uso de HTTPS difiera entre clases."`
 - **I3. Longitud de la URL (Mann-Whitney).**
-  - Resultado: la probabilidad de que una URL de phishing sea más larga que una legítima es `r f(inf["I3", "estimacion"], 3)` (IC 95 %: `r f(inf["I3", "IC95_inf"], 3)` a `r f(inf["I3", "IC95_sup"], 3)`). Es una diferencia real pero moderada.
-  - Supuestos: no exige normalidad.
+  - Pregunta: ¿las URL de phishing tienden a ser más largas que las legítimas?
+  - Parámetro: θ = P(X_phishing > X_legítimo), la probabilidad de que una URL de phishing elegida al azar sea más larga que una legítima (probabilidad de superioridad).
+  - H0: `r inf["I3", "H0"]`. H1: la probabilidad de superioridad es distinta de 0.5.
+  - Resultado: la probabilidad de superioridad es `r f(inf["I3", "estimacion"], 3)` (IC 95 %: `r f(inf["I3", "IC95_inf"], 3)` a `r f(inf["I3", "IC95_sup"], 3)`).
+  - Supuestos: no exige normalidad; observaciones independientes.
+  - Conclusión en contexto: `r decision_txt("I3")` `r if (rechaza("I3")) sprintf("En %d de cada 100 pares, la URL de phishing es la más larga: la longitud ayuda, pero separa las clases solo de forma moderada.", round(100 * inf["I3", "estimacion"])) else "No hay evidencia de que la longitud difiera entre clases."`
 - **I4. Enlaces a redes sociales (chi-cuadrada de independencia).**
+  - Pregunta: ¿la presencia de enlaces a redes sociales está asociada con la clase?
+  - Parámetro: la asociación entre `HasSocialNet` y la clase, resumida con la razón de momios de phishing sin enlaces frente a con enlaces.
+  - H0: `r inf["I4", "H0"]`. H1: hay asociación entre `HasSocialNet` y la clase.
   - Resultado: sin estos enlaces, los momios de phishing son `r f(inf["I4", "estimacion"], 0)` veces mayores (IC 95 %: `r f(inf["I4", "IC95_inf"], 0)` a `r f(inf["I4", "IC95_sup"], 0)`).
   - Supuestos: conteos esperados mayores que 5.
+  - Conclusión en contexto: `r decision_txt("I4")` `r if (rechaza("I4")) "Las páginas sin enlaces a redes sociales son phishing con mucha más frecuencia; es una asociación en esta muestra, no una causa." else "No hay evidencia de asociación."`
 
 Con tantas observaciones casi cualquier diferencia es significativa, así que importa más el **tamaño** del efecto que el valor p. Además, son asociaciones en esta muestra, **no causas**.
 

@@ -570,7 +570,8 @@ rasgos reales del phishing (sección 3.3).</li>
 <div id="fuente-y-depuración" class="section level2">
 <h2>3.1 Fuente y depuración</h2>
 <p>PhiUSIIL Phishing URL (UCI Machine Learning Repository; licencia CC
-BY 4.0; Prasad y Chandra, 2024).</p>
+BY 4.0; Prasad y Chandra, 2024). Fecha de consulta de los datos: 30 de
+octubre de 2026.</p>
 <ul>
 <li><strong>Archivo:</strong> 235,795 filas y 56 columnas; pesa 54.2 MiB
 (UCI lo muestra como 54.2 MB). UCI reporta 54 variables; el archivo
@@ -1489,32 +1490,69 @@ clase</td>
 <ul>
 <li><strong>I1. Prevalencia.</strong>
 <ul>
+<li>Pregunta: ¿qué proporción de las URL es phishing y con qué
+incertidumbre?</li>
+<li>Parámetro: p, la proporción de phishing en la población que
+representa la muestra.</li>
+<li>H0: no aplica (estimación de intervalo). H1: no aplica.</li>
 <li>Resultado: la proporción de phishing es 0.4271, con un intervalo de
 confianza de 95 % (método de Wilson) de 0.4251 a 0.4291.</li>
 <li>Supuestos: observaciones independientes tras quitar duplicados.</li>
+<li>Conclusión en contexto: cerca de 43 de cada 100 URL de la muestra
+son phishing, con un margen de error muy pequeño. Es la proporción de
+esta muestra, no la del tráfico que vería un centro de seguridad, donde
+el phishing es mucho más raro.</li>
 </ul></li>
 <li><strong>I2. HTTPS según la clase (prueba z de dos
 proporciones).</strong>
 <ul>
+<li>Pregunta: ¿la proporción de URL con HTTPS es distinta entre phishing
+y legítimas?</li>
+<li>Parámetro: p_phishing − p_legítimo, la diferencia entre las
+proporciones de URL con HTTPS.</li>
+<li>H0: p(phishing) = p(legítimo). H1: las proporciones difieren
+(p(phishing) ≠ p(legítimo)).</li>
 <li>Resultado: el phishing usa HTTPS 50.9 puntos porcentuales menos que
-las legítimas (IC 95 %: 50.6 a 51.2). Se rechaza que las proporciones
-sean iguales.</li>
+las legítimas (IC 95 %: 50.6 a 51.2).</li>
 <li>Supuestos: muestras independientes, conteos esperados mayores que
 5.</li>
+<li>Conclusión en contexto: Con α = 0.05 se rechaza H0 (p &lt; 0.001).
+La falta de HTTPS es mucho más frecuente en el phishing, así que es una
+señal útil para el analista, aunque por sí sola no prueba que una URL
+sea maliciosa.</li>
 </ul></li>
 <li><strong>I3. Longitud de la URL (Mann-Whitney).</strong>
 <ul>
-<li>Resultado: la probabilidad de que una URL de phishing sea más larga
-que una legítima es 0.721 (IC 95 %: 0.719 a 0.723). Es una diferencia
-real pero moderada.</li>
-<li>Supuestos: no exige normalidad.</li>
+<li>Pregunta: ¿las URL de phishing tienden a ser más largas que las
+legítimas?</li>
+<li>Parámetro: θ = P(X_phishing &gt; X_legítimo), la probabilidad de que
+una URL de phishing elegida al azar sea más larga que una legítima
+(probabilidad de superioridad).</li>
+<li>H0: P(X_phishing &gt; X_legítimo) = 0.5. H1: la probabilidad de
+superioridad es distinta de 0.5.</li>
+<li>Resultado: la probabilidad de superioridad es 0.721 (IC 95 %: 0.719
+a 0.723).</li>
+<li>Supuestos: no exige normalidad; observaciones independientes.</li>
+<li>Conclusión en contexto: Con α = 0.05 se rechaza H0 (p &lt; 0.001).
+En 72 de cada 100 pares, la URL de phishing es la más larga: la longitud
+ayuda, pero separa las clases solo de forma moderada.</li>
 </ul></li>
 <li><strong>I4. Enlaces a redes sociales (chi-cuadrada de
 independencia).</strong>
 <ul>
+<li>Pregunta: ¿la presencia de enlaces a redes sociales está asociada
+con la clase?</li>
+<li>Parámetro: la asociación entre <code>HasSocialNet</code> y la clase,
+resumida con la razón de momios de phishing sin enlaces frente a con
+enlaces.</li>
+<li>H0: HasSocialNet y clase son independientes. H1: hay asociación
+entre <code>HasSocialNet</code> y la clase.</li>
 <li>Resultado: sin estos enlaces, los momios de phishing son 757 veces
 mayores (IC 95 %: 693 a 826).</li>
 <li>Supuestos: conteos esperados mayores que 5.</li>
+<li>Conclusión en contexto: Con α = 0.05 se rechaza H0 (p &lt; 0.001).
+Las páginas sin enlaces a redes sociales son phishing con mucha más
+frecuencia; es una asociación en esta muestra, no una causa.</li>
 </ul></li>
 </ul>
 <p>Con tantas observaciones casi cualquier diferencia es significativa,
