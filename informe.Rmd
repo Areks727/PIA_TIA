@@ -1,0 +1,930 @@
+---
+title: "Auditoría Estadística de Detección de Phishing"
+subtitle: ""
+author: "Alejandro Martínez Moya, Fernando Garza Chávez, David Emiliano Rangel Tovar"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    theme: readable
+    highlight: tango
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    code_folding: show
+---
+
+# Datos de identificación
+
+- Grupo: 061
+- Integrantes: Alejandro Martínez Moya, Fernando Garza Chávez, David Emiliano Rangel Tovar
+- Docente: Dr. Álvaro E. Cordero-Franco
+- Fecha de entrega: 20/11/2026
+- Repositorio: https://github.com/Areks727/PIA_TIA/tree/main
+
+# Resumen ejecutivo
+
+Problema. Una organización necesita decidir qué sitios web marcar como phishing a partir de características de su URL y de su página. Un falso negativo deja pasar un ataque; una falsa alarma consume tiempo del equipo de seguridad.
+
+Datos. Usamos el conjunto PhiUSIIL de la UCI, con 235,795 sitios. Tomamos una muestra estratificada de 10,000 y la dividimos en 7,498 sitios de entrenamiento y 2,501 de prueba. La prevalencia de phishing en entrenamiento es 42.8%, muy por encima de la que tendría el tráfico real.
+
+Hallazgos.
+
+1. Las señales son fuertes. Los sitios sin HTTPS son phishing en todos los casos de entrenamiento, y la asociación entre HTTPS y la clase es significativa (chi-cuadrada, p < 0.0001). Las URLs de phishing son más largas (prueba de Mann-Whitney, p < 0.0001).
+2. Dentro del modelo, pocos enlaces externos, muchos dígitos en la URL y mayor longitud fuera del dominio se asocian con phishing. La presencia de campo de contraseña se asocia con menos phishing, un resultado contrario a la intuición que requiere cautela.
+3. La regresión logística ordena bien los sitios (AUC de 0.994 en prueba). Con umbral 0.30, en prueba omite 13 de 1,071 ataques y genera 70 falsas alarmas.
+
+Recomendación. Usar la regresión logística con umbral 0.30, tratando las alertas como revisión y no como bloqueo automático, porque alrededor de 7 de cada 100 alertas no serán amenazas reales.
+
+Riesgo principal. Las clases son casi separables con estas variables, y la prevalencia de la muestra es alta. Con una prevalencia real de 1%, la precisión caería a alrededor de 15%. El modelo debe recalibrarse con datos del entorno donde se use.
+
+# Problema y objetivos
+
+La pregunta rectora es cómo puede la estadística ayudar a distinguir una amenaza real de la variabilidad normal y a justificar una decisión de seguridad. Para responderla, la unidad de análisis es un sitio web descrito por características de su URL y de su página, y la variable respuesta es la clase: phishing o legítimo.
+
+El objetivo es describir y depurar los datos, verificar con pruebas inferenciales qué características se asocian con phishing, comparar una regresión logística con un árbol de decisión y elegir un umbral según las consecuencias operativas de cada tipo de error. Consideramos que un falso negativo (un ataque omitido) es más costoso que una falsa alarma, porque un ataque puede causar daño directo, mientras que una falsa alarma consume revisión. Por eso el análisis reporta ambos errores y no solo la precisión global.
+
+___
+# Datos y preparación
+
+```{r instalacion-librerias, eval=FALSE}
+# Librerias utilizadas. Ejecutar en caso de no tenerlas instaladas.
+install.packages("rsample")
+install.packages("tidyverse")
+install.packages("rpart")
+install.packages("rpart.plot")
+install.packages("caret")
+install.packages("car")
+install.packages("pROC")
+install.packages("brglm2")
+```
+
+Se cuentan con algunas librerias para facilitar la generación de algunos estadísticos, también para lograr una mejor documentación.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+
+# Librerías
+library(tidyverse)  
+library(rsample)    
+library(knitr)      
+
+# seed para reproducibilidad
+set.seed(2026)
+```
+
+Se preparó la seed para garantizar reproducibilidad en los resultados. 
+A continuación preparamos un bloque de código que nos permite, en caso de no contar con el archivo CSV instalado en nuestro equipo, ejecutar igualmente el código por medio de la creación de un archivo temporal donde se guardarán los datos. 
+
+```{r carga-datos}
+ruta_local <- "PhiUSIIL_Phishing_URL_Dataset.csv"
+url_uci    <- "https://archive.ics.uci.edu/static/public/967/phiusiil+phishing+url+dataset.zip"
+
+if (file.exists(ruta_local)) {
+  # Si el archivo ya existe localmente, lo lee directo para ahorrar tiempo
+  datos <- read_csv(ruta_local)
+} else {
+  # Descarga el dataset en un archivo temporal en caso de no tenerlo
+  temp_zip <- tempfile(fileext = ".zip")
+  temp_dir <- tempdir()
+  
+  download.file(url_uci, destfile = temp_zip, mode = "wb")
+  archivos_extraidos <- unzip(temp_zip, exdir = temp_dir)
+  
+  # Guardamos el csv descargado
+  archivo_csv <- archivos_extraidos[grepl("\\.csv$", archivos_extraidos)][1]
+  datos <- read_csv(archivo_csv)
+  
+  unlink(temp_zip)
+}
+
+```
+
+
+A continuación se lleva a cabo una pequeña revisión de los datos, mas especificamente una revisión de datos faltantes y de datos repetidos.
+```{r revision-datos-dimensiones}
+
+# Revision de dimensiones, faltantes y repetidos
+tabla_inf <- tibble(
+  Metrica = c("Observaciones totales", "Variables", 
+              "Valores faltantes (NA)", "Filas duplicadas"),
+  Valor = c(nrow(datos), ncol(datos), 
+            sum(is.na(datos)), sum(duplicated(datos)))
+)
+kable(tabla_inf, caption = "Calidad del conjunto de datos")
+```
+
+A partir de lo obtenido en la tabla sobre la calidad del conjunto de datos, podemos darnos cuenta de que en este dataset no se tienen datos faltantes ni repetidos.
+Contamos con 56 variables, las cuales a continuación verificaremos sus tipos para despues seleccionar aquellas las cuales nos ayuden en nuestro objetivo para determinar la variable de respuesta.
+
+```{r revision-datos-tipos}
+# Tipos de datos
+resumen_tipos <- tibble(
+  Tipo_de_Dato = sapply(datos, function(x) class(x)[1])
+) %>%
+  count(Tipo_de_Dato, name = "Cantidad_Variables") %>%
+  mutate(Porcentaje = round(Cantidad_Variables / sum(Cantidad_Variables) * 100, 1))
+
+kable(resumen_tipos, caption = "Variables según su tipo de dato")
+
+```
+
+Podemos ver que se cuenta en mayoría con variables del tipo numericas, siendo 51 en este caso las que tenemos de este tipo, aún asi, tras una revisión mas detallada de las variables que manejamos en el dataset, decidimos clasificarlas a modo de funcionalidad a la hora de determinar su inclinación sobre lo que buscamos verificar, determinar si forman parte de una campaña de phishing o si de lo contrario, son legitimos.
+
+```{r revision-datos-eleccion}
+# Diccionario de seleccion 
+criterios_seleccion <- tibble(
+  Grupo_Variables = c(
+    "Identificadores y texto libre (FILENAME, URL, Domain, Title, TLD)",
+    "Métricas derivadas redundantes o compuestas (ej. URLSimilarityIndex, CharContinuationRate, ratios)",
+    "Características estructurales y de seguridad seleccionadas (10 predictores)",
+    "Variable objetivo (label -> clase)"
+  ),
+  Decision = c("Excluidas", "Excluidas", "Conservadas", "Recodificada"),
+  Justificacion = c(
+    "Son identificadores únicos o cadenas de texto, incluirlas provocaría una falta de generalización.",
+    "Variables altamente colineales o índices sintéticos complejos que dificultan la interpretación directa de razones de momios (Odds Ratios) para toma de decisiones.",
+    "Variables observables, interpretables y accionables en un SOC: longitud de URL/dominio, uso de IP, subdominios, HTTPS, ofuscación, letras, dígitos, campos de contraseña y enlaces externos.",
+    "Se define 'Phishing' (0) como clase positiva y 'Legitimo' (1) como referencia."
+  )
+)
+
+kable(criterios_seleccion, caption = "Justificación de selección de variables")
+```
+
+Como se ve en la tabla anterior, decidimos tomar en cuenta principalmente aquellas variables que nos dan paso a la interpretación de acuerdo al contexto planteado, teniamos variables como el FILENAME o la URL que no nos daban paso a la generalización ni a una interpretación clara para aplicarlo a nuestro problematica por resolver.
+
+```{r limpieza-datos}
+
+datos_limpios <- datos %>%
+  # Recodificamos 'label'
+  # Ponemos Phishing primero como clase positiva
+  mutate(
+    clase = factor(ifelse(label == 0, "Phishing", "Legitimo"),
+                   levels = c("Phishing", "Legitimo")),
+    IsHTTPS = factor(IsHTTPS, levels = c(0, 1), labels = c("No", "Si")),
+    HasObfuscation = factor(HasObfuscation, levels = c(0, 1), labels = c("No", "Si")),
+    HasPasswordField = factor(HasPasswordField, levels = c(0, 1), labels = c("No", "Si")),
+    HasSubmitButton = factor(HasSubmitButton, levels = c(0, 1), labels = c("No", "Si"))
+  ) %>%
+  # Seleccionamos la variable respuesta y 10 predictores
+  select(
+    clase,                  
+    URLLength,              
+    DomainLength,           
+    IsDomainIP,             
+    NoOfSubDomain,          
+    IsHTTPS,               
+    HasObfuscation,         
+    NoOfLettersInURL,      
+    NoOfDegitsInURL,       
+    HasPasswordField,      
+    NoOfExternalRef        
+  )
+
+variables <- tibble(
+  Variable = c(
+    "Clase", "URLLength", "DomainLength", "IsDomainIP", "NoOfSubDomain", "IsHTTPS", "HasObfuscation", "NoOfLettersInURL", "NoOfDigitsInURL", "HasPasswordField", "NoOfExternalRef"
+  ),
+  Descripcion = c(
+    "Variable de respuesta (Phishing vs Legitimo)",
+    "Longitud total de la URL (caracteres)",
+    "Longitud del dominio",
+    "1 si el dominio es una dirección IP, 0 si no",
+    "Numero de subdominios",
+    "Uso de protocolo HTTPS (Si/No)",
+    "Presencia de caracteres ofuscados en URL (Si/No)",
+    "Cantidad de letras en la URL",
+    "Cantidad de digitos en la URL",
+    "Si la pagina pide contraseña (Si/No)",
+    "Numero de hipervinculos externos en la pagina"
+  )
+)
+
+kable(variables, caption = "Variables seleccionadas")
+```
+
+Como se puede ver, las variables seleccionadas son aquellas que nos dan una respuesta bastante directa de lo que deseamos saber, es decir, caracteristicas claras de un sitio web que nos ayudarán a determinar si puede corresponder a una campaña de phishing (respuesta positiva), o si es legitimo (respuesta negativa).
+
+En el siguiente apartado buscamos reducir un poco la cantidad de filas tomadas de nuestro conjunto de datos, tratando de mantener en proporción los resultados, unicamente facilitando el proceso en requerimientos computacionales utilizados.
+
+```{r muestreo-datos}
+
+set.seed(2026)
+muestra_split <- initial_split(datos_limpios, prop = 10000 / nrow(datos_limpios), strata = clase)
+datos_muestra <- training(muestra_split)
+
+
+# Particion 75/25 train-test
+set.seed(2026)
+particion <- initial_split(datos_muestra, prop = 0.75, strata = clase)
+
+train_data <- training(particion) # 7,500 para entrenamiento
+test_data  <- testing(particion)  # 2,500 para test final
+
+# Verificación semejanza en proporciones
+proporciones <- tibble(
+  Conjunto = c("Dataset Completo", "Muestra (10k)", "Entrenamiento (75%)", "Prueba (25%)"),
+  Total = c(nrow(datos_limpios), nrow(datos_muestra), nrow(train_data), nrow(test_data)),
+  Pct_Phishing = round(c(
+    mean(datos_limpios$clase == "Phishing"),
+    mean(datos_muestra$clase == "Phishing"),
+    mean(train_data$clase == "Phishing"),
+    mean(test_data$clase == "Phishing")
+  ) * 100, 2)
+) 
+  kable(proporciones, caption = "Verificación de la partición de datos")
+```
+
+Como se puede ver en la tabla, el porcentaje de casos de phishing en cada uno de los conjuntos de datos mostrados se mantiene igual, esto nos permite obtener resultados semejantes con una exigencia menor en los recursos computacionales utilizados.
+
+
+___
+# Análisis descriptivo
+Para evitar la fuga de información y mantener intacto el conjunto de datos de prueba, todo el análisis a continuación se realizará exclusivamente sobre el conjunto de datos de entrenamiento (`train_data`), el cual como se mencionó anteriormente, cuenta con 7,498 observaciones.
+
+## Distribución de clases y resumen de variables numéricas
+Como primer paso, examinamos la frecuencia y proporción de las clases en nuestra muestra de entrenamiento para confirmar el balance entre sitios de phishing y sitios legitimos.
+
+```{r distr-prop-clases}
+tabla_clases <- train_data %>%
+  count(clase, name = "Frecuencia") %>%
+  mutate(
+    Proporcion = round(Frecuencia / sum(Frecuencia), 4),
+    Porcentaje = paste0(round(Proporcion * 100, 2), "%")
+  )
+
+kable(tabla_clases, caption = "Distribución y proporción de clases")
+```
+
+Podemos observar como, aunque los sitios legitimos se presentan en mayor cantidad (~57.2%), aun asi existe una alta presencia de sitios de phishing(~42.8%); esto refuerza la existencia de la problematica que tratamos con este proyecto, como los sitios de phishing son algo casi tan comunes como los sitios legitimos.
+
+A continuación pasamos a calcular algunos estadísticos de las variables predictoras numericas seleccionadas en los pasos anteriores, con el propósito de entender su comportamiento general.
+
+```{r stats-vars-predictoras}
+resumen_numerico <- train_data %>%
+  select(URLLength, DomainLength, NoOfSubDomain, 
+         NoOfLettersInURL, NoOfDegitsInURL, NoOfExternalRef) %>%
+  pivot_longer(everything(), names_to = "Variable", values_to = "Valor") %>%
+  group_by(Variable) %>%
+  summarise(
+    Media   = round(mean(Valor, na.rm = TRUE), 2),
+    DE      = round(sd(Valor, na.rm = TRUE), 2),
+    Q1      = round(quantile(Valor, 0.25, na.rm = TRUE), 2),
+    Mediana = round(median(Valor, na.rm = TRUE), 2),
+    Q3      = round(quantile(Valor, 0.75, na.rm = TRUE), 2),
+    IQR     = round(IQR(Valor, na.rm = TRUE), 2)
+  )
+
+kable(resumen_numerico, caption = "Medidas de centro, dispersión y cuantiles para variables numéricas")
+```
+
+A partir de los resultados obtenidos, podemos observar ciertas cosas relevantes que resaltar, por un lado tenemos la diferencia notoria entre la media y la mediana de las variables predictoras `NoOfExternalRef` y `URLLength`, lo cual evidencia una fuerte asimetría positiva provocado por sitios con URLs demasiado extensas o con múltiples enlaces externos, esto nos puede ayudar a decidir ante el uso de medidas robustas y pruebas no paramétricas más adelante.
+
+## Gráficas univariadas
+Exploraremos el comportamiento individual de la variable predictora `NoOfSubDomain` y de la longitud total de la URL (`URLLength`).
+
+```{r graficas-univariadas1}
+# Distribución de cantidad de subdominios
+g1_subdominios <- ggplot(train_data, aes(x = factor(NoOfSubDomain))) +
+  geom_bar(fill = "#34495E", width = 0.6) +
+  geom_text(stat = "count", 
+            aes(label = paste0(round(after_stat(count)/sum(after_stat(count))*100, 2), "%")), 
+            vjust = -0.4, size = 3.5) +
+  ylim(0, max(table(train_data$NoOfSubDomain)) * 1.12) +
+  labs(
+    title = "Distribución del número de subdominios por URL",
+    x = "Cantidad de subdominios",
+    y = "Frecuencia (sitios)"
+  ) +
+  theme_minimal()
+
+print(g1_subdominios)
+```
+
+Con el gráfico resultante, podemos observar que el 76.13% de los sitios cuenta con exactamente 1 subdominio (el cual se puede ver como un patrón estándar asociado al uso de www), mientras que el 15.8% presenta 2 subdominios y el 5.31% no utiliza ninguno. Los sitios sin subdominios son todos phishing en entrenamiento (398 de 398). Con un subdominio la proporción cae a 0.36 y luego sube de forma sostenida: 0.50 con dos, 0.70 con tres y 0.98 con cuatro. Por eso el número de subdominios no es un indicador lineal, y en el modelo multivariado no tiene efecto significativo (ver Modelación).
+
+Para continuar mostraremos un histograma con las longitudes de la URL de los datos.
+
+```{r graficas-univariadas2}
+# Histograma de longitud de URL 
+limite_url <- quantile(train_data$URLLength, 0.98)
+
+g2_hist_url <- ggplot(train_data, aes(x = URLLength)) +
+  geom_histogram(bins = 30, fill = "#5D6D7E", color = "white", alpha = 0.9) +
+  geom_vline(aes(xintercept = median(URLLength)), color = "#E74C3C", linetype = "dashed", linewidth = 1) +
+  coord_cartesian(xlim = c(0, limite_url)) +
+  labs(
+    title = "Distribución de longitud de URL (hasta percentil 98)",
+    subtitle = "Línea roja punteada: Mediana global",
+    x = "Longitud de la URL (caracteres)",
+    y = "Frecuencia (sitios)"
+  ) +
+  theme_minimal()
+
+print(g2_hist_url)
+```
+
+Como se puede apreciar en el histograma, tenemos que la longitud de las URLs de nuestros datos tiende a ser menor a 50 caracteres, al igual que los subdominios, se suele tomar como un indicador de phishing el hecho de contar con una URL con una cantidad anormalmente grande de caracteres.
+
+
+## Graficas bivariadas
+A continuación contrastaremos cómo cambian las variables de longitud de la URL y el uso de HTTPS según la legitimidad del sitio (si es de phishing o no lo es).
+
+```{r graficas-bivariadas1}
+g3_box_url <- ggplot(train_data, aes(x = clase, y = URLLength, fill = clase)) +
+  geom_boxplot(outlier.alpha = 0.2, show.legend = FALSE) +
+  scale_fill_manual(values = c("Phishing" = "#D9534F", "Legitimo" = "#2E86C1")) +
+  coord_cartesian(ylim = c(0, limite_url)) +
+  labs(
+    title = "Longitud de URL según clasificación del sitio",
+    x = "Clasificación del sitio",
+    y = "Longitud de la URL (caracteres)"
+  ) +
+  theme_minimal()
+
+print(g3_box_url)
+```
+
+Se puede observar como el diagrama de caja (o boxplot), muestra que los sitios de phishing tienden a presentar una mediana de longitud de URL mayor, además de una dispersión más amplia que los sitios legítimos, lo cual puede deberse a sitios con cadenas engañosas o cadenas largas con múltiples parámetros.
+
+```{r graficas-bivariadas2}
+g4_https <- ggplot(train_data, aes(x = clase, fill = IsHTTPS)) +
+  geom_bar(position = "fill", width = 0.5) +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual(values = c("No" = "#E67E22", "Si" = "#27AE60"), name = "¿Usa HTTPS?") +
+  labs(
+    title = "Proporción de uso de HTTPS por clase",
+    x = "Clasificación del sitio",
+    y = "Porcentaje de sitios (%)"
+  ) +
+  theme_minimal()
+
+print(g4_https)
+```
+
+Por otro lado, a partir del gráfico con el contraste de uso de HTTPS y clase asignada, podemos observar como, mientras casi en totalidad los sitios legitimos cuentan con HTTPS, una proporción de aproximadamente el 50% de los sitios de phishing, operan sin dicho certificado cifrado.
+
+## Matriz de correlación
+A continuación, con el propósito de detectar redundancias y relaciones entre nuestros predictores, generaremos una matriz de correlación de nuestras variables numéricas.
+
+```{r matriz-correlacion-numvars}
+vars_num <- train_data %>%
+  select(URLLength, DomainLength, NoOfSubDomain, 
+         NoOfLettersInURL, NoOfDegitsInURL, NoOfExternalRef)
+
+matriz_cor <- round(cor(vars_num, use = "complete.obs"), 2)
+
+cor_largo <- as.data.frame(as.table(matriz_cor))
+names(cor_largo) <- c("Var1", "Var2", "Correlacion")
+
+ggplot(cor_largo, aes(x = Var1, y = Var2, fill = Correlacion)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = Correlacion), size = 3.5, color = "black") +
+  scale_fill_gradient2(low = "#2E86C1", mid = "white", high = "#D9534F", 
+                       midpoint = 0, limit = c(-1, 1), name = "Correlación") +
+  labs(
+    title = "Matriz de correlación lineal entre variables numéricas",
+    x = "", y = ""
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 35, hjust = 1))
+```
+
+Como se puede ver a partir de la matriz de correlación, se puede notar una fuerte relación entre las variables `URLLength` y `NoOfLettersInURL`, lo cual tiene sentido, debido a que normalmente las URLs están formadas en su mayoría, por letras. Para evitar problemas de multicolinealidad, excluiremos la variable `NoOfLettersInURL` en la etapa de modelación. Cabe destacar que estas correlaciones describen asociación estadística lineal entre características estructurales y no implican causalidad.
+
+
+## Calidad, representatividad y posibles sesgos
+El conjunto de datos cuenta con alta integridad en su estructura al no presentar valores faltantes ni registros duplicados, además de que el muestreo realizado asegura representar correctamente de manera interna con respecto a los datos originales. Aún considerando lo anterior, existen dos sesgos relevantes para la toma de decisiones:
+- La proporción de ataques con la que se cuenta en esta muestra es mucho mayor al tráfico real de una organización.
+- Dado que los atacantes que generan estos sitios de phishing, adoptan cada vez más certificados HTTPS, es complicado depender exclusivamente de reglas estáticas, las cuales pueden perder efectividad con el paso del tiempo.
+
+
+
+# Inferencia estadística
+
+Con el objetivo de validar estadísticamente los patrones observados en la etapa exploratoria sobre el conjunto de entrenamiento ($n = 7,498$), aplicamos tres procedimientos inferenciales con un nivel de significancia estándar de $\alpha = 0.05$.
+
+
+## 1. Intervalo de confianza y prueba para una proporción (Prevalencia de phishing)
+
+* **Pregunta:** ¿Cuál es la prevalencia real de sitios de phishing en la población representada por el conjunto de datos y difiere significativamente de una distribución equilibrada del 50%?
+* **Parámetro de interés:** $p$, la proporción poblacional de direcciones URL clasificadas como `Phishing`.
+* **Hipótesis:**
+  * $H_0: p = 0.50$ (la prevalencia de sitios maliciosos es igual al 50%).
+  * $H_1: p \neq 0.50$ (la prevalencia difiere del 50%, prueba bilateral con $\alpha = 0.05$).
+* **Verificación de supuestos:** Las observaciones provienen de un muestreo aleatorio estratificado independiente y el tamaño de muestra es suficientemente grande para la aproximación normal ($n\hat{p} > 10$ y $n(1-\hat{p}) > 10$ con $n = 7,498$).
+
+```{r inf-proporcion}
+n_total    <- nrow(train_data)
+n_phishing <- sum(train_data$clase == "Phishing")
+
+res_prop <- prop.test(x = n_phishing, n = n_total, p = 0.50, conf.level = 0.95)
+
+tabla_inf1 <- tibble(
+  Casos_Phishing = n_phishing,
+  Total_Muestra = n_total,
+  Proporcion_Estimada = round(as.numeric(res_prop$estimate), 4),
+  IC_95_Inferior = round(res_prop$conf.int[1], 4), IC_95_Superior = round(res_prop$conf.int[2], 4),
+  Estadistico_X2 = round(as.numeric(res_prop$statistic), 2),
+  Valor_p = format.pval(res_prop$p.value, eps = 0.0001)
+)
+
+kable(tabla_inf1, caption = "Inferencia sobre la prevalencia poblacional de phishing (IC 95%)")
+
+```
+
+Con un 95% de confianza, la proporción real de sitios de phishing en la población estudiada se ubica entre `r round(res_prop$conf.int[1]*100, 2)`% y `r round(res_prop$conf.int[2]*100, 2)`% (estimación puntual: `r round(res_prop$estimate*100, 2)`%), rechazando $H_0$ ($p < 0.0001$). Desde una perspectiva operativa en ciberseguridad, cuantificar esta tasa base es indispensable porque determina el volumen esperado de alertas; si este modelo se traslada a una red empresarial donde la prevalencia real sea mucho menor, aumentará la proporción de falsas alarmas.  
+
+
+## 2. Prueba Chi-cuadrada ($\chi^2$) de independencia (Uso de HTTPS vs. Clasificación)
+
+* **Pregunta:** ¿Existe una asociación estadísticamente significativa entre el uso del protocolo cifrado HTTPS (IsHTTPS) y la clasificación del sitio (clase)?
+* **Parámetro de interés:** Independencia estocástica entre dos variables categóricas dicotómicas en la población.
+* **Hipótesis:**
+  * $H_0:$ El uso de HTTPS y el hecho de que un sitio sea de phishing son variables independientes.
+  * $H_1:$ Existe una asociación significativa entre el uso de HTTPS y la clasificación del sitio ($\alpha = 0.05$).
+* **Verificación de supuestos:** Observaciones independientes y frecuencias esperadas mayores o iguales a 5 en todas las celdas de la tabla de contingencia.
+
+```{r inf-chi-cuadrada}
+tabla_cont <- table(Clase = train_data$clase, HTTPS = train_data$IsHTTPS)
+res_chi <- chisq.test(tabla_cont)
+
+# Verificación de frecuencia esperada mínima
+min_esp <- min(res_chi$expected)
+
+kable(addmargins(tabla_cont), caption = "Tabla de contingencia observada: Clase vs. Uso de HTTPS")
+
+tabla_inf2 <- tibble(
+  Frecuencia_Esperada_Min = round(min_esp, 2),
+  Estadistico_Chi2 = round(as.numeric(res_chi$statistic), 2),
+  Grados_Libertad = as.numeric(res_chi$parameter),
+  Valor_p = format.pval(res_chi$p.value, eps = 0.0001)
+)
+
+kable(tabla_inf2, caption = "Resultados de la prueba de independencia Chi-cuadrada")
+```
+
+El supuesto de frecuencias esperadas se cumple ampliamente (frecuencia mínima esperada = `r round(min_esp, 1)` $> 5$). Se obtiene un estadístico $\chi^2 = `r round(res_chi$statistic, 2)`$ con valor $p < 0.0001$, por lo que se rechaza la hipótesis de independencia. En términos prácticos, existe una asociación muy fuerte entre carecer de certificado HTTPS y tratarse de un sitio malicioso; sin embargo, dado que cerca de la mitad de los sitios de phishing sí emplean HTTPS, esta característica aporta evidencia útil pero insuficiente como regla única de bloqueo.  
+
+
+## 3. Comparación entre grupos mediante prueba de Mann-Whitney-Wilcoxon (Longitud de URL)
+
+* **Pregunta:** ¿Existe una diferencia estadísticamente significativa en la distribución de la longitud de la URL (URLLength) entre sitios de phishing y sitios legítimos?   
+* **Parámetro de interés:** $\Delta$, el desplazamiento de ubicación de URLLength entre sitios de phishing y legítimos, estimado con el estimador de Hodges-Lehmann. 
+* **Hipótesis:**
+  * $H_0:$ La distribución de la longitud de la URL es idéntica en ambas clases ($\Delta = 0$).
+  * $H_1:$ Existe una diferencia significativa en la longitud de la URL entre sitios de phishing y legítimos ($\Delta \neq 0$, con $\alpha = 0.05$).
+* **Verificación de supuestos:** Dado que en el análisis exploratorio comprobamos que URLLength presenta fuerte asimetría positiva y valores extremos, no se cumple el supuesto de normalidad requerido por una prueba t clásica. Por ello, empleamos la prueba no paramétrica de Mann-Whitney-Wilcoxon, que únicamente requiere independencia entre observaciones y una escala de medición al menos ordinal.
+
+```{r inf-comp-grupos}
+res_wilcox <- wilcox.test(URLLength ~ clase, data = train_data, conf.int = TRUE)
+
+resumen_grupos <- train_data %>%
+  group_by(clase) %>%
+  summarise(
+    n = n(),
+    Mediana = median(URLLength),
+    IQR = IQR(URLLength),
+    Media = round(mean(URLLength), 2)
+  )
+
+kable(resumen_grupos, caption = "Estadísticos por clase para longitud de URL")
+
+tabla_inf3 <- tibble(
+  Estadistico_W = as.numeric(res_wilcox$statistic),
+  Diferencia_Ubicacion_Est = round(as.numeric(res_wilcox$estimate), 2),
+  IC_95_Inferior = round(res_wilcox$conf.int[1], 2), IC_95_Superior = round(res_wilcox$conf.int[2], 2),
+  Valor_p = format.pval(res_wilcox$p.value, eps = 0.0001)
+)
+
+kable(tabla_inf3, caption = "Prueba de Mann-Whitney-Wilcoxon para longitud de URL por clase")
+```
+
+Con un valor $p < 0.0001$, rechazamos la hipótesis nula y concluimos que la longitud de las URLs difiere significativamente entre ambos grupos, estimándose un desplazamiento de ubicación de `r round(res_wilcox$estimate, 2)` caracteres (IC 95%: [`r round(res_wilcox$conf.int[1], 2)`, `r round(res_wilcox$conf.int[2], 2)`]). Operativamente, esto indica que los sitios de phishing de la muestra tienden a tener direcciones más largas. Una explicación posible es el uso de subdominios o parámetros de redirección, que la muestra no permite verificar; no obstante, como el solapamiento entre cajas es considerable, la longitud de URL debe combinarse con otras señales en un modelo multivariado.
+
+___
+# Modelación
+
+Selección de predictores. Partimos de los 10 predictores conservados en la sección de datos. Excluimos NoOfLettersInURL por su colinealidad con URLLength, como se explicó en el análisis de correlación. Excluimos IsHTTPS, IsDomainIP y HasObfuscation porque separan casi perfectamente las clases en entrenamiento: todos los sitios sin HTTPS son phishing, y también lo son los 16 sitios con IP como dominio y los 15 con ofuscación. Con esas variables, el coeficiente no puede estimarse de forma confiable. HTTPS sigue en el análisis de asociación (prueba chi-cuadrada) y en el análisis descriptivo. Quedan 6 predictores, dentro del rango de 6 a 8 que fijamos para mantener el modelo interpretable. Ambos modelos usan exactamente los mismos 6 predictores, para que la comparación sea justa.
+
+```{r modelacion-librerias}
+library(rpart)
+library(rpart.plot)
+library(caret)
+library(car)
+library(pROC)
+library(brglm2)
+```
+
+## Predictores y VIF
+
+```{r modelacion-vif}
+predictores_6 <- c("URLLength", "DomainLength", "NoOfSubDomain",
+                   "NoOfDegitsInURL", "HasPasswordField", "NoOfExternalRef")
+
+# Respuesta numérica: 1 = Phishing, 0 = Legitimo
+train_glm <- train_data %>% mutate(y = as.numeric(clase == "Phishing"))
+
+# Tabla de VIF; para factores se usa GVIF^(1/(2*Df))
+tabla_vif <- function(v) {
+  if (is.matrix(v)) {
+    tibble(Variable = rownames(v), GVIF = v[, "GVIF"], Df = v[, "Df"],
+           GVIF_ajustado = v[, "GVIF^(1/(2*Df))"])
+  } else {
+    tibble(Variable = names(v), GVIF = as.numeric(v), Df = 1,
+           GVIF_ajustado = sqrt(as.numeric(v)))
+  }
+}
+
+vif_6 <- tabla_vif(car::vif(lm(reformulate(predictores_6, "y"), data = train_glm))) %>%
+  arrange(desc(GVIF_ajustado))
+
+kable(vif_6 %>% mutate(across(where(is.double), ~ round(.x, 3))),
+      caption = "VIF de los 6 predictores (car::vif sobre lm), train_data")
+```
+
+Los factores de inflación de varianza ajustados quedan por debajo de 2, muy por debajo del umbral de 5, así que la colinealidad no compromete la estimación. El valor más alto es el de URLLength (1.72), seguido de NoOfDegitsInURL (1.62). DomainLength queda en 1.20.
+
+
+## Modelo 1: Regresión logística con corrección de sesgo
+
+```{r modelo-logistica}
+modelo_logit <- glm(reformulate(predictores_6, "y"), family = binomial,
+                    data = train_glm, method = brglm2::brglmFit)
+stopifnot(modelo_logit$converged)
+
+# Verificación: y = 1 corresponde a Phishing y el modelo estima P(Phishing)
+verif_respuesta <- train_glm %>%
+  mutate(p_ajustada = fitted(modelo_logit)) %>%
+  group_by(clase) %>%
+  summarise(y = unique(y), n = n(), P_media_ajustada = round(mean(p_ajustada), 3))
+stopifnot(all(verif_respuesta$y[verif_respuesta$clase == "Phishing"] == 1),
+          verif_respuesta$P_media_ajustada[verif_respuesta$clase == "Phishing"] >
+            verif_respuesta$P_media_ajustada[verif_respuesta$clase == "Legitimo"])
+
+kable(verif_respuesta, caption = "Codificación de la respuesta y probabilidad media ajustada P(Phishing)")
+```
+
+```{r logistica-odds-ratios}
+coefs_logit <- summary(modelo_logit)$coefficients
+ic_or <- exp(confint.default(modelo_logit))
+
+tabla_or <- tibble(
+  Termino    = rownames(coefs_logit),
+  Odds_Ratio = exp(coefs_logit[, "Estimate"]),
+  IC95_Inf   = ic_or[rownames(coefs_logit), 1],
+  IC95_Sup   = ic_or[rownames(coefs_logit), 2],
+  Valor_p    = coefs_logit[, "Pr(>|z|)"]
+) %>%
+  mutate(across(where(is.double), ~ round(.x, 3)))
+
+kable(tabla_or, format.args = list(scientific = FALSE),
+      caption = "Odds Ratios de la regresión logística para P(Phishing), método brglm2 (brglmFit), IC 95% con confint.default()")
+```
+
+Los coeficientes se estimaron con corrección de sesgo tipo Firth (paquete brglm2). El glm estándar converge, pero avisa que 2,617 de los 7,498 sitios de entrenamiento quedan con probabilidades numéricamente en 0 o 1, y sus coeficientes no son confiables: las clases son casi separables con estas variables. La corrección de sesgo da estimaciones e intervalos finitos. El ajuste sigue avisando de probabilidades en 0 o 1, y los intervalos son aproximaciones de Wald. Deben leerse como orientación y no como cifras exactas.
+
+Tres efectos en lenguaje aplicado. Primero, cada enlace externo adicional en la página reduce los momios de phishing en aproximadamente la mitad (OR 0.505; IC 95%: 0.477 a 0.534), manteniendo lo demás constante. Una página con muchas referencias externas es, en esta muestra, menos sospechosa que una con pocas. Segundo, cada dígito adicional en la URL multiplica los momios por 3.4 (OR 3.417; IC 95%: 2.425 a 4.815), con un intervalo relativamente estrecho. Tercero, tener campo de contraseña se asocia con menos momios de phishing (OR 0.239; IC 95%: 0.099 a 0.577), ajustando por las demás variables. Es contrario a la intuición de que el phishing pide credenciales, y la tabla bruta confirma la dirección: 23.5% de los sitios con campo de contraseña son phishing, frente a 45.0% de los que no lo tienen. Con estos datos no podemos explicar el mecanismo, y la asociación no implica causalidad.
+
+Las longitudes deben leerse juntas. URLLength (OR 2.242 por carácter) y DomainLength (OR 0.486 por carácter) tienen signos opuestos porque la URL incluye al dominio. Un carácter añadido fuera del dominio aumenta los momios en 2.242 veces; uno añadido dentro del dominio los aumenta en aproximadamente 1.09 (2.242 × 0.486). Las magnitudes por carácter son grandes porque el ajuste tiene probabilidades casi extremas, así que conviene leerlas como dirección del efecto y no como cifra exacta.
+
+NoOfSubDomain (OR 0.844; IC 95%: 0.625 a 1.140; p = 0.268) no tiene efecto significativo una vez ajustado por las demás variables. La lectura preliminar del análisis descriptivo no se sostiene como efecto lineal.
+
+
+## Modelo 2: Árbol de decisión
+
+```{r arbol-cv}
+control_cv <- trainControl(method = "cv", number = 10,
+                           classProbs = TRUE, summaryFunction = twoClassSummary)
+grilla_cp <- data.frame(cp = exp(seq(log(0.0001), log(0.05), length.out = 20)))
+
+set.seed(2026)
+cv_arbol <- train(
+  x = as.data.frame(train_data[, predictores_6]),
+  y = train_data$clase,
+  method = "rpart",
+  metric = "ROC",
+  trControl = control_cv,
+  tuneGrid = grilla_cp
+)
+
+cp_opt <- cv_arbol$bestTune$cp
+cp_en_borde <- isTRUE(all.equal(cp_opt, min(grilla_cp$cp))) ||
+  isTRUE(all.equal(cp_opt, max(grilla_cp$cp)))
+
+kable(cv_arbol$results %>%
+        select(cp, ROC, Sens, Spec) %>%
+        mutate(cp = format(signif(cp, 4), scientific = FALSE),
+               across(c(ROC, Sens, Spec), ~ round(.x, 3))),
+      caption = "Validación cruzada de 10 pliegues en train_data (ROC, Sens y Spec para Phishing)")
+
+kable(tibble(cp_elegido = format(signif(cp_opt, 4), scientific = FALSE),
+             ROC_CV = round(max(cv_arbol$results$ROC), 3),
+             En_borde_de_la_grilla = ifelse(cp_en_borde, "Sí", "No")),
+      caption = "cp elegido por validación cruzada (máximo ROC)")
+```
+
+```{r arbol-final, fig.width=10, fig.height=7}
+set.seed(2026)
+arbol_completo <- rpart(reformulate(predictores_6, "clase"), data = train_data,
+                        method = "class", control = rpart.control(cp = 0))
+arbol_final <- prune(arbol_completo, cp = cp_opt)
+
+rpart.plot(arbol_final, type = 2, extra = 104, roundint = FALSE,
+           main = paste0("Árbol de decisión podado (cp = ",
+                         format(signif(cp_opt, 4), scientific = FALSE), ")"))
+```
+
+El árbol final tiene 20 hojas y se podó con cp = 0.0001, que está en el borde inferior de la grilla. El ROC de validación cruzada es prácticamente igual para todos los cp entre 0.0001 y 0.0005, así que el tamaño exacto influye poco en la capacidad de ordenar, pero un árbol tan grande puede ajustarse al ruido y varias hojas tienen pocos casos. Por eso el árbol se usa para comparar con la logística, no como resumen del fenómeno.
+
+La primera división es NoOfExternalRef. Los sitios con menos de 4.5 enlaces externos (3,320 en entrenamiento) son 94.0% phishing, y los que tienen 4.5 o más (4,178) son 97.9% legítimos. La dirección coincide con el OR de 0.505 de la logística: más enlaces externos, menos sospecha.
+
+Dentro del grupo con pocos enlaces, la longitud de la URL y el número de dígitos separan los casos dudosos. Entre los sitios con 1.5 a 3.5 enlaces, las URLs de 34.5 caracteres o más son 99.5% phishing (418 casos). En el grupo con 3.5 a 4.5 enlaces, las URLs con 2.5 dígitos o más son 98.2% phishing (57 casos). En el grupo con 4.5 enlaces o más, las URLs de 46.5 caracteres o más son 97.4% phishing, pero son solo 38 casos.
+
+Algunas hojas tienen muy pocos casos. Por ejemplo, una hoja con 7 sitios, todos phishing, depende únicamente de tener 4.5 enlaces o más, una URL de menos de 46.5 caracteres y ningún subdominio. Esa regla no es confiable. NoOfSubDomain aparece en una sola división, que aísla a 7 sitios sin subdominios dentro del grupo con 4.5 enlaces o más. Ese corte depende de muy pocos casos y no sostiene un efecto estable de la variable.
+
+
+___
+# Evaluación y umbrales
+
+## Curvas ROC y AUC en test_data
+
+```{r roc-auc}
+p_logit <- predict(modelo_logit, newdata = test_data, type = "response")
+p_arbol <- predict(arbol_final, newdata = test_data, type = "prob")[, "Phishing"]
+
+roc_logit <- roc(response = test_data$clase, predictor = p_logit,
+                 levels = c("Legitimo", "Phishing"), direction = "<")
+roc_arbol <- roc(response = test_data$clase, predictor = p_arbol,
+                 levels = c("Legitimo", "Phishing"), direction = "<")
+
+auc_logit <- as.numeric(auc(roc_logit))
+auc_arbol <- as.numeric(auc(roc_arbol))
+stopifnot(auc_logit > 0.5, auc_arbol > 0.5)
+
+test_delong <- roc.test(roc_logit, roc_arbol, method = "delong")
+
+kable(tibble(Modelo = c("Regresión logística", "Árbol de decisión"),
+             AUC = round(c(auc_logit, auc_arbol), 3)),
+      caption = "AUC en test_data")
+
+kable(tibble(Prueba = "DeLong (curvas pareadas)",
+             Estadistico_Z = round(as.numeric(test_delong$statistic), 3),
+             Diferencia_AUC = round(auc_logit - auc_arbol, 3),
+             Valor_p = format.pval(test_delong$p.value, digits = 3, eps = 0.001)),
+      caption = "Comparación de AUC: logística vs árbol (test_data)")
+```
+
+La curva ROC mide la capacidad de ordenar. Un AUC de 0.994 significa que un sitio de phishing elegido al azar recibe una probabilidad mayor que un sitio legítimo elegido al azar en aproximadamente 99.4% de los casos. La diferencia con el árbol (0.987) es de 0.007 y es estadísticamente significativa según DeLong (Z = 3.564; p < 0.001). Es una diferencia clara pero pequeña en la práctica: ambos modelos ordenan los sitios casi igual, y la elección entre ellos depende más de cómo se reparten los errores en cada umbral que del AUC.
+
+
+```{r roc-figura, fig.width=7, fig.height=6}
+etiquetas_roc <- c(
+  Logistica = sprintf("Regresión logística (AUC = %.3f)", auc_logit),
+  Arbol     = sprintf("Árbol de decisión (AUC = %.3f)", auc_arbol)
+)
+
+ggroc(list(Logistica = roc_logit, Arbol = roc_arbol), legacy.axes = TRUE, linewidth = 1) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey50") +
+  scale_color_manual(values = c(Logistica = "#D9534F", Arbol = "#2E86C1"),
+                     labels = etiquetas_roc, name = "Modelo") +
+  coord_equal() +
+  labs(
+    title = "Curvas ROC en test_data",
+    x = "1 - Especificidad (tasa de falsos positivos)",
+    y = "Sensibilidad (tasa de verdaderos positivos)"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom", legend.direction = "vertical")
+```
+
+## Umbrales de la regresión logística en test_data
+
+```{r umbrales-logistica}
+metricas_clasif <- function(prob, real, umbral) {
+  pred <- prob >= umbral
+  obs  <- real == "Phishing"
+  TP <- sum(pred & obs);  FP <- sum(pred & !obs)
+  FN <- sum(!pred & obs); TN <- sum(!pred & !obs)
+  sens <- TP / (TP + FN)
+  esp  <- TN / (TN + FP)
+  prec <- ifelse(TP + FP > 0, TP / (TP + FP), NA_real_)
+  tibble(TP = TP, FP = FP, FN = FN, TN = TN,
+         Sensibilidad = sens, Especificidad = esp, Precision = prec,
+         F1 = 2 * prec * sens / (prec + sens),
+         Tasa_falsas_alarmas = FP / (FP + TN))
+}
+
+tabla_umbrales <- map_dfr(c(0.30, 0.50, 0.70), function(u) {
+  bind_cols(tibble(Umbral = u), metricas_clasif(p_logit, test_data$clase, u))
+}) %>%
+  mutate(across(where(is.double), ~ round(.x, 3)))
+
+kable(tabla_umbrales,
+      caption = "Regresión logística en test_data: Phishing si P >= umbral (Tasa de falsas alarmas = FP / (FP + TN))")
+```
+
+```{r oof-entrenamiento}
+set.seed(2026)
+folds <- caret::createFolds(train_data$clase, k = 10)
+
+oof_logit <- rep(NA_real_, nrow(train_data))
+oof_arbol <- rep(NA_real_, nrow(train_data))
+
+for (idx in folds) {
+  modelo_k <- glm(reformulate(predictores_6, "y"), family = binomial,
+                  data = train_glm[-idx, ], method = brglm2::brglmFit)
+  oof_logit[idx] <- predict(modelo_k, newdata = train_glm[idx, ], type = "response")
+
+  arbol_k <- prune(rpart(reformulate(predictores_6, "clase"), data = train_data[-idx, ],
+                         method = "class", control = rpart.control(cp = 0)),
+                   cp = 0.0001)
+  oof_arbol[idx] <- predict(arbol_k, newdata = train_data[idx, ], type = "prob")[, "Phishing"]
+}
+
+# Una predicción fuera de muestra por sitio
+stopifnot(length(unlist(folds)) == nrow(train_data), !anyDuplicated(unlist(folds)),
+          !anyNA(oof_logit), !anyNA(oof_arbol))
+
+roc_oof_logit <- roc(response = train_data$clase, predictor = oof_logit,
+                     levels = c("Legitimo", "Phishing"), direction = "<")
+roc_oof_arbol <- roc(response = train_data$clase, predictor = oof_arbol,
+                     levels = c("Legitimo", "Phishing"), direction = "<")
+auc_oof_logit <- as.numeric(auc(roc_oof_logit))
+auc_oof_arbol <- as.numeric(auc(roc_oof_arbol))
+
+tabla_oof <- function(prob, auc_agrupado) {
+  map_dfr(c(0.30, 0.50, 0.70), function(u) {
+    bind_cols(tibble(Umbral = u), metricas_clasif(prob, train_data$clase, u))
+  }) %>%
+    mutate(AUC_agrupado = auc_agrupado) %>%
+    mutate(across(where(is.double), ~ round(.x, 3)))
+}
+
+tabla_oof_logit <- tabla_oof(oof_logit, auc_oof_logit)
+tabla_oof_arbol <- tabla_oof(oof_arbol, auc_oof_arbol)
+
+kable(tabla_oof_logit,
+      caption = "Regresión logística: predicciones fuera de muestra en train_data (10 pliegues)")
+kable(tabla_oof_arbol,
+      caption = "Árbol de decisión (cp = 0.0001): predicciones fuera de muestra en train_data (10 pliegues)")
+```
+
+Estos umbrales se compararon con predicciones fuera de muestra en entrenamiento (10 pliegues), y el conjunto de prueba solo confirma las consecuencias. Al bajar el umbral de 0.50 a 0.30, los falsos negativos (ataques omitidos) bajan de 46 a 36 entre 3,210 sitios de phishing, y las falsas alarmas suben de 178 a 246 entre 4,288 sitios legítimos. Cada ataque omitido que se evita implica aproximadamente 7 falsas alarmas adicionales. Con 0.70, los ataques omitidos suben a 89 y las falsas alarmas bajan a 107. En prueba el patrón se repite, con 13, 17 y 25 falsos negativos para 0.30, 0.50 y 0.70. Con 0.30, alrededor de 7 de cada 100 alertas no son amenazas reales (precisión de 0.928 en entrenamiento). La propuesta del equipo define el falso negativo como el error más costoso, así que 0.30 es la recomendación si el equipo puede revisar esas alertas. Si la capacidad de revisión es limitada, 0.50 es un punto intermedio razonable.
+
+
+## Comparación de modelos con umbral 0.50
+
+```{r comparacion-modelos}
+tabla_comparacion <- bind_rows(
+  bind_cols(tibble(Modelo = "Regresión logística", AUC = auc_logit),
+            metricas_clasif(p_logit, test_data$clase, 0.50)),
+  bind_cols(tibble(Modelo = "Árbol de decisión", AUC = auc_arbol),
+            metricas_clasif(p_arbol, test_data$clase, 0.50))
+) %>%
+  select(Modelo, AUC, Sensibilidad, Especificidad, Precision, F1, FP, FN) %>%
+  mutate(across(where(is.double), ~ round(.x, 3)))
+
+kable(tabla_comparacion, caption = "Comparación de modelos en test_data (umbral 0.50)")
+```
+
+Con umbral 0.50 en prueba, el árbol comete menos falsas alarmas que la logística (26 frente a 48) y tiene mayor especificidad (0.982 frente a 0.966), mientras que la logística omite menos ataques (17 frente a 22). La misma relación aparece en entrenamiento, con predicciones fuera de muestra y el mismo esquema para ambos modelos: a 0.50, la logística omite 46 ataques frente a 83 del árbol, pero genera 178 falsas alarmas frente a 85. Los AUC agrupados confirman que la logística ordena mejor los sitios (0.994 frente a 0.986).
+
+Como ambos modelos eligen puntos distintos del compromiso, la comparación depende de cuántos ataques se quieran detectar y cuántas alertas pueda revisar el equipo. Con umbral 0.30, la logística omite 36 ataques en entrenamiento (1.1% de los sitios de phishing) y el árbol omite 77 (2.4%). El costo es que la logística produce 246 falsas alarmas frente a 93 del árbol: por cada ataque adicional que detecta, genera aproximadamente 3.7 falsas alarmas adicionales. Con umbral 0.70, la diferencia en ataques omitidos casi desaparece (89 frente a 95), pero la logística sigue generando 34 falsas alarmas más.
+
+Como la propuesta del equipo define el falso negativo como el error más costoso, la recomendación es la logística con umbral 0.30. Es el modelo que más ataques detecta en cada umbral, tiene el mayor AUC y es interpretable. Si la capacidad de revisión del equipo fuera muy limitada, el árbol con umbral 0.50 sería la alternativa: produce 85 falsas alarmas en entrenamiento, pero omite 83 ataques, así que solo conviene si la organización acepta ese nivel de ataques omitidos.
+
+# Conclusiones y recomendación
+
+La pregunta rectora tiene respuesta afirmativa: las características de la URL y de la página separan los sitios de phishing de los legítimos con alta precisión. Dentro de esas características, los enlaces externos, los dígitos en la URL y la longitud fuera del dominio son las que resultan significativas en el modelo. La ausencia de HTTPS es una de las asociaciones más marcadas de la muestra, aunque no entra en el modelo por separación. Son asociaciones observacionales, no demuestran causalidad.
+
+Recomendación: adoptar la regresión logística con umbral 0.30. En entrenamiento, con predicciones fuera de muestra, omite 36 de 3,210 ataques (1.1%) y produce 246 falsas alarmas de 4,288 sitios legítimos. En prueba el patrón se confirma: 13 ataques omitidos de 1,071 y 70 falsas alarmas de 1,430. El árbol con umbral 0.50 es una alternativa si la capacidad de revisión es muy limitada, pero omite 83 ataques en entrenamiento. Las alertas deben revisarse por una persona antes de bloquear, porque alrededor de 7 de cada 100 no son amenazas reales.
+
+Qué cambiaría la decisión: una prevalencia real distinta, un costo de falso negativo mayor o menor, o cambios en las técnicas de los atacantes. Cualquiera de esos cambios exige recalibrar el umbral con datos de la organización.
+
+# Limitaciones
+
+1. Prevalencia. La muestra tiene 42.8% de phishing, mucho mayor que la del tráfico real. La precisión depende de la prevalencia: con 1% de phishing, alrededor de 15% de las alertas serían amenazas reales con el umbral recomendado, usando predicciones fuera de muestra en entrenamiento.
+2. Separabilidad. Las clases son casi separables con estas variables. Eso favorece el desempeño observado y puede sobrestimarlo en datos nuevos. El resultado debe validarse con otra fuente o en otro periodo.
+3. Estimaciones. La logística se ajustó con corrección de sesgo porque el ajuste estándar no era confiable. Los intervalos son aproximaciones de Wald, y las magnitudes por carácter son grandes porque las probabilidades quedan casi extremas. Deben leerse como dirección del efecto.
+4. Variables excluidas. HTTPS, IsDomainIP y HasObfuscation no entran al modelo. Su relación con la clase sigue siendo relevante, pero el modelo no cuantifica su aportación conjunta con las demás.
+5. Muestra. Trabajamos con 10,000 sitios estratificados para facilitar el cómputo. Las estimaciones pueden variar al usar todo el conjunto, y no lo evaluamos por costo computacional.
+6. Árbol. El cp elegido está en el borde de la grilla, y varias hojas tienen pocos casos. El árbol sirve para comparar, no para explicar el fenómeno.
+7. Evolución de los ataques. Los atacantes adoptan HTTPS con más frecuencia, y las señales basadas en la URL pueden perder efectividad con el tiempo. El conjunto no captura esa evolución.
+
+# Contribuciones
+
+| Integrante | Tareas principales | Secciones del informe |
+|---|---|---|
+| Alejandro Martínez Moya | Pregunta rectora, unidad de análisis, diccionario de variables, limpieza y muestreo estratificado. Análisis descriptivo y gráficas. Las tres pruebas inferenciales. | Problema y objetivos; Datos y preparación; Análisis descriptivo; Inferencia |
+| Fernando Garza Chávez | Verificación de multicolinealidad (VIF), regresión logística con brglm2 y odds ratios, árbol de decisión con validación cruzada. Curvas ROC, umbrales y validación fuera de muestra. | Modelación; Evaluación y umbrales |
+| David Emiliano Rangel Tovar | Recomendación y conclusiones, limitaciones, resumen ejecutivo, referencias. Revisión de reproducibilidad. Presentación en Canva. | Conclusiones y recomendación; Limitaciones; Resumen ejecutivo; Referencias; Anexo técnico |
+
+## Declaración de autoría
+
+El equipo declara que puede explicar el código y las decisiones incluidas en este informe, que identifica las fuentes utilizadas y que no presenta como propios análisis ni textos generados por terceros. Se usó Claude (Anthropic) como herramienta de apoyo para redactar código R y texto; el equipo revisó y verificó cada cifra contra la salida de R.
+
+# Referencias
+
+Prasad, A. & Chandra, S. (2024). PhiUSIIL Phishing URL (Website) [Dataset]. UCI Machine Learning Repository. https://doi.org/10.1016/j.cose.2023.103545.
+
+UCI Machine Learning Repository. PhiUSIIL Phishing URL Dataset. https://archive.ics.uci.edu/dataset/967/phiusiil+phishing+url+dataset. Licencia: Creative Commons Attribution 4.0 (CC BY 4.0).
+
+Firth, D. (1993). Bias reduction of maximum likelihood estimates. Biometrika, 80(1), 27–38.
+
+Los paquetes de R usados y sus versiones se listan en el Anexo técnico.
+
+# Anexo técnico
+
+Versiones de R y de los paquetes usados para generar este informe.
+
+```{r figuras-presentacion, include=FALSE}
+dir.create("figuras", showWarnings = FALSE)
+
+col_logit <- "#1F3A5F"
+col_arbol <- "#8A96A3"
+col_fn    <- "#C0392B"
+
+# 2400 x 1500 px a 300 dpi, fondo blanco
+guardar_fig <- function(grafica, archivo) {
+  ggsave(file.path("figuras", archivo), grafica,
+         width = 8, height = 5, units = "in", dpi = 300, bg = "white")
+}
+
+tema_fig <- theme_minimal(base_size = 13) +
+  theme(plot.title = element_text(face = "bold"),
+        panel.grid.minor = element_blank())
+
+# 1. Proporción de phishing por número de subdominios (train_data)
+subdom <- train_data %>%
+  group_by(NoOfSubDomain) %>%
+  summarise(n = n(), prop = mean(clase == "Phishing"))
+
+g_subdom <- ggplot(subdom, aes(x = factor(NoOfSubDomain), y = prop)) +
+  geom_col(fill = col_logit, width = 0.7) +
+  geom_text(aes(label = paste0(round(prop * 100, 1), "%\nn = ", n)),
+            vjust = -0.3, size = 3.6, lineheight = 0.9) +
+  scale_y_continuous(labels = scales::percent, breaks = seq(0, 1, 0.25),
+                     limits = c(0, 1.2)) +
+  labs(title = "Phishing por número de subdominios",
+       x = "Número de subdominios", y = "Proporción de phishing") +
+  tema_fig
+guardar_fig(g_subdom, "phishing_por_subdominios.png")
+
+# 2. Odds ratios de la logística con IC 95% (sin intercepto)
+or_fig <- tabla_or %>%
+  filter(Termino != "(Intercept)") %>%
+  mutate(Termino = reorder(Termino, Odds_Ratio))
+
+g_or <- ggplot(or_fig, aes(x = Odds_Ratio, y = Termino)) +
+  geom_vline(xintercept = 1, linetype = "dashed", color = "grey40") +
+  geom_errorbar(aes(xmin = IC95_Inf, xmax = IC95_Sup), width = 0.2,
+                orientation = "y", color = col_logit) +
+  geom_point(size = 3, color = col_logit) +
+  scale_x_log10() +
+  labs(title = "Odds ratios de la regresión logística",
+       x = "Odds ratio (escala logarítmica) con IC 95%", y = NULL) +
+  tema_fig
+guardar_fig(g_or, "or_logistica.png")
+
+# 3. Curvas ROC en test_data
+g_roc <- ggroc(list(Logistica = roc_logit, Arbol = roc_arbol),
+               legacy.axes = TRUE, linewidth = 1) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey60") +
+  scale_color_manual(values = c(Logistica = col_logit, Arbol = col_arbol),
+                     labels = c(Logistica = sprintf("Regresión logística (AUC = %.3f)", auc_logit),
+                                Arbol     = sprintf("Árbol de decisión (AUC = %.3f)", auc_arbol)),
+                     name = NULL) +
+  labs(title = "Curvas ROC en prueba",
+       x = "1 - Especificidad", y = "Sensibilidad") +
+  tema_fig +
+  theme(legend.position = "bottom")
+guardar_fig(g_roc, "curvas_roc.png")
+
+# 4. Falsos negativos y falsos positivos de la logística por umbral (oof_logit)
+errores_umbral <- map_dfr(c(0.30, 0.50, 0.70), function(u) {
+  bind_cols(tibble(Umbral = u), metricas_clasif(oof_logit, train_data$clase, u))
+}) %>%
+  select(Umbral, FN, FP) %>%
+  pivot_longer(c(FN, FP), names_to = "Error", values_to = "n") %>%
+  mutate(Error = factor(Error, levels = c("FN", "FP"),
+                        labels = c("Falsos negativos (ataques omitidos)",
+                                   "Falsos positivos (falsas alarmas)")))
+
+g_umbrales <- ggplot(errores_umbral, aes(x = factor(Umbral), y = n, fill = Error)) +
+  geom_col(position = position_dodge(width = 0.75), width = 0.7) +
+  geom_text(aes(label = n), position = position_dodge(width = 0.75),
+            vjust = -0.4, size = 3.8) +
+  scale_fill_manual(values = c(col_fn, col_logit), name = NULL) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.1))) +
+  labs(title = "Errores de la logística por umbral",
+       subtitle = "Entrenamiento, predicciones fuera de muestra",
+       x = "Umbral de P(Phishing)", y = "Número de sitios") +
+  tema_fig +
+  theme(legend.position = "bottom")
+guardar_fig(g_umbrales, "umbrales_entrenamiento.png")
+```
+
+```{r sessionInfo}
+sessionInfo()
+```
