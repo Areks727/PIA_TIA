@@ -1,5 +1,0 @@
-﻿"grupo","variables","signos_de_alineacion","suma_beta_estandarizado","IC95_inf_suma","IC95_sup_suma","proporcion_replicas_positivas","direccion"
-"G1","HasObfuscation + NoOfObfuscatedChar + ObfuscationRatio","+ + +",0.006172388362814288,-1.2565723906627483e-4,0.3599437800561549,0.9459459459459459,"dirección no determinada (IC incluye 0)"
-"G2","NoOfLettersInURL + LetterRatioInURL","+ +",3.621124064787886,2.9792487927606723,4.608294370032345,1,"aumenta la probabilidad de phishing"
-"G3","NoOfDegitsInURL + DegitRatioInURL","+ +",3.104648779087798,1.945757845860813,3.912791361874387,1,"aumenta la probabilidad de phishing"
-"G4","NoOfEqualsInURL + NoOfQMarkInURL","+ +",9.189648446664136e-4,-0.009658632238611187,0.010162157035783742,0.581081081081081,"dirección no determinada (IC incluye 0)"

@@ -1,9 +1,0 @@
-﻿"variable_1","variable_2","spearman"
-"URLLength","NoOfLettersInURL",0.9721
-"HasObfuscation","NoOfObfuscatedChar",1
-"HasObfuscation","ObfuscationRatio",1
-"NoOfObfuscatedChar","ObfuscationRatio",1
-"NoOfLettersInURL","LetterRatioInURL",0.9309
-"NoOfDegitsInURL","DegitRatioInURL",0.9968
-"NoOfEqualsInURL","NoOfQMarkInURL",0.9098
-"DomainTitleMatchScore","URLTitleMatchScore",0.9644

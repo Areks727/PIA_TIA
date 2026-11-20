@@ -1,4 +1,0 @@
-﻿"regla","C","umbral_logloss"
-"C más pequeño dentro de 1 EE del mínimo (EE = DE muestral / sqrt(K)) [regla usada]",10,4.830591240447828e-4
-"referencia: misma regla con DE poblacional / sqrt(K) [no se usa]",10,4.6895622391162224e-4
-"referencia: mínimo log-loss medio (criterio de la versión en Python) [no se usa]",10,NA
